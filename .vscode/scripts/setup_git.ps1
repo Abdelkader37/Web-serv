@@ -41,7 +41,7 @@ git config --add remote.origin.url $remotes["origin"]
 
 Write-Host "Fetching from origin and setting upstream..."
 git fetch origin
-git branch --set-upstream-to=origin/master master
+git branch --set-upstream-to=origin/main master
 
 if (Test-Path ".git") {
     New-Item -ItemType File -Path ".git/setup_done" -Force | Out-Null

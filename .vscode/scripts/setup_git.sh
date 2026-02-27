@@ -43,7 +43,7 @@ git config --add remote.origin.url "$REMOTE_ORIGIN"
 
 echo "Fetching from origin and setting upstream..."
 git fetch origin
-git branch --set-upstream-to=origin/master master
+git branch --set-upstream-to=origin/main master
 
 touch .git/setup_done
 echo "Setup complete!"

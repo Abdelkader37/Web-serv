@@ -25,14 +25,14 @@
                 "command": "sh",
                 "args": [
                     "-c",
-                    "if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
+                    "if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then sh '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
                 ]
             },
             "osx": {
                 "command": "sh",
                 "args": [
                     "-c",
-                    "if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
+                    "if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then sh '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
                 ]
             },
             "runOptions": {
