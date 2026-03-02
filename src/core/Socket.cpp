@@ -17,6 +17,7 @@ Socket::Socket(int fd)
 {
 	if (fd == -1)
 		throw std::runtime_error("Invalid socket file descriptor");
+
 	fd_ = fd;
 }
 
