@@ -10,3 +10,8 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 *.lnk
+
+# temporary files
+*.tmp
+test*
+a.out
