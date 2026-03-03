@@ -4,31 +4,31 @@
 #include <netinet/in.h>   // AF_INET, SOCK_STREAM
 #include <unistd.h>       // close()
 #include <stdexcept>      // std::runtime_error
+#include <fcntl.h>        // fcntl(), F_SETFD, F_SETFL, FD_CLOEXEC, O_NONBLOCK
 
-Socket::Socket()
+void Socket::configureSocket()
 {
-	fd_ = socket(AF_INET, SOCK_STREAM, 0);
-
 	if (fd_ == -1)
-		throw std::runtime_error("Failed to create socket");
-
-	// Set the close-on-exec flag to prevent file descriptor leaks in child processes
-	fcntl(fd_, F_SETFD, FD_CLOEXEC);
-	// Set the socket to non-blocking mode
-	fcntl(fd_, F_SETFL, O_NONBLOCK);
-}
-
-Socket::Socket(int fd)
-{
-	if (fd == -1)
 		throw std::runtime_error("Invalid socket file descriptor");
 
 	// Set the close-on-exec flag to prevent file descriptor leaks in child processes
-	fcntl(fd, F_SETFD, FD_CLOEXEC);
-	// Set the socket to non-blocking mode
-	fcntl(fd, F_SETFL, O_NONBLOCK);
+	// Also set the socket to non-blocking mode
+	if (fcntl(fd_, F_SETFD, FD_CLOEXEC) == -1 || fcntl(fd_, F_SETFL, O_NONBLOCK) == -1)
+	{
+		close(fd_);
+		fd_ = -1;
+		throw std::runtime_error("Failed to set FD_CLOEXEC and O_NONBLOCK flags on socket file descriptor");
+	}
+}
 
-	fd_ = fd;
+Socket::Socket() : fd_(socket(AF_INET, SOCK_STREAM, 0))
+{
+	configureSocket();
+}
+
+Socket::Socket(int fd) : fd_(fd)
+{
+	configureSocket();
 }
 
 int Socket::get() const

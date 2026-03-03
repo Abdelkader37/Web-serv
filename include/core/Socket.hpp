@@ -16,8 +16,10 @@ private:
 
 	// Non-copyable
 	Socket(const Socket&);
-	// Non-movable
+	// Non-assignable
 	Socket& operator=(const Socket&);
+
+	void configureSocket(); // Set FD_CLOEXEC and O_NONBLOCK flags on the socket file descriptor
 
 	int fd_;
 

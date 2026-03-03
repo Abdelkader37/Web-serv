@@ -11,14 +11,14 @@ public:
 	int getReadFd() const;
 	int getWriteFd() const;
 
-	void closeWriteFd();
-	void closeReadFd();
+	void closeWrite();
+	void closeRead();
 
 private:
 
 	// Non-copyable
 	Pipe(const Pipe&);
-	// Non-movable
+	// Non-assignable
 	Pipe& operator=(const Pipe&);
 
 	int readFd_;
