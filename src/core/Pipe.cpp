@@ -1,8 +1,8 @@
 #include "core/Pipe.hpp"
 
-#include <unistd.h>       // pipe(), close()
-#include <stdexcept>      // std::runtime_error
-#include <fcntl.h>        // fcntl(), F_SETFD, F_SETFL, FD_CLOEXEC, O_NONBLOCK
+#include <unistd.h>        // pipe(), close()
+#include <stdexcept>       // std::runtime_error
+#include <fcntl.h>         // fcntl(), F_SETFD, F_SETFL, FD_CLOEXEC, O_NONBLOCK
 
 void Pipe::closeWrite()
 {

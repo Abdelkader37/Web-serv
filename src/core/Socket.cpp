@@ -1,10 +1,10 @@
 #include "core/Socket.hpp"
 
-#include <sys/socket.h>   // socket()
-#include <netinet/in.h>   // AF_INET, SOCK_STREAM
-#include <unistd.h>       // close()
-#include <stdexcept>      // std::runtime_error
-#include <fcntl.h>        // fcntl(), F_SETFD, F_SETFL, FD_CLOEXEC, O_NONBLOCK
+#include <sys/socket.h>    // socket()
+#include <netinet/in.h>    // AF_INET, SOCK_STREAM
+#include <unistd.h>        // close()
+#include <stdexcept>       // std::runtime_error
+#include <fcntl.h>         // fcntl(), F_SETFD, F_SETFL, FD_CLOEXEC, O_NONBLOCK
 
 void Socket::configureSocket()
 {
