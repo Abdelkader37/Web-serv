@@ -19,7 +19,7 @@ private:
 	// Non-assignable
 	Socket& operator=(const Socket&);
 
-	void configureSocket(); // Set FD_CLOEXEC and O_NONBLOCK flags on the socket file descriptor
+	void configureSocket();
 
 	int fd_;
 
