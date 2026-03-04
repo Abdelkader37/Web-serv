@@ -13,6 +13,7 @@ public:
 	int acceptConnection();
 
 private:
+
 	// Non-copyable
 	ListeningSocket(const ListeningSocket &other);
 	// Non-assignable

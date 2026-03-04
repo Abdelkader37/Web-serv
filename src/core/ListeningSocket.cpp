@@ -1,6 +1,5 @@
 #include "core/ListeningSocket.hpp"
 
-#include <stdexcept>       // std::runtime_error
 #include <sys/socket.h>    // setsockopt, bind, listen, SOL_SOCKET, SO_REUSEADDR, SOMAXCONN
 #include <netdb.h>         // getaddrinfo, freeaddrinfo, gai_strerror, addrinfo, AI_PASSIVE
 #include <netinet/in.h>    // sockaddr_in, AF_INET
