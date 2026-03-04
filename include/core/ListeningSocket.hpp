@@ -8,7 +8,7 @@ class ListeningSocket : public Socket
 
 public:
 
-	ListeningSocket(const std::string &iface, int port);
+	ListeningSocket(const std::string &bind_address, const std::string &bind_port);
 
 	int acceptConnection();
 

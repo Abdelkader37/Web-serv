@@ -39,5 +39,4 @@ int Socket::get() const
 Socket::~Socket()
 {
 	close(fd_);
-	fd_ = -1;
 }
