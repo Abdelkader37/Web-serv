@@ -3,42 +3,48 @@
 #include "Socket.hpp"      // Socket
 #include "Pipe.hpp"        // Pipe
 #include <vector>          // std::vector
-#include <poll.h>         // struct pollfd
+#include <poll.h>          // struct pollfd
+#include <utility>         // std::pair
+
+// for readability purpose
+typedef void* Owner;
 
 class Poller
 {
 
 public:
 
-	struct Handle
-	{
-		void *owner;
-		int   revents;
-	};
-
 	Poller();
 	~Poller();
 
-	void addHandle(Socket &socket, int events);
-	void addHandle(Pipe &pipe, int events);
+	// owner: caller context passed back in dispatcher, avoids fd-to-object lookup
+	void add(Socket &socket, int events, Owner owner);
+	void add(Pipe &pipe, int events, Owner owner);
 
-	void modHandle(Socket &socket, int events);
-	void modHandle(Pipe &pipe, int events);
+	void mod(Socket &socket, int events);
+	void mod(Pipe &pipe, int events);
 
-	void removeHandle(Socket &socket);
-	void removeHandle(Pipe &pipe);
+	void remove(Socket &socket);
+	void remove(Pipe &pipe);
 
-	// Returns ready Handles, empty if timeout expires.
-	std::vector<Handle> wait(int timeout_ms);
+	// timeout_ms: -1 = infinite
+	void waitAndDispatch(int timeout_ms, void (*dispatcher)(Owner owner, int revents));
 
 private:
 
-	// Non-copyable (one instance of Poller per lifetime of the program)
+	// Non-copyable
 	Poller(const Poller&);
-	// Non-assignable (one instance of Poller per lifetime of the program)
+	// Non-assignable
 	Poller& operator=(const Poller&);
 
-	std::vector<struct pollfd> pfds_;   // passed directly to poll()
-	std::vector<void *>        owners_; // same index = same handle
+	void add(int fd, int events, Owner owner);
+	void mod(int fd, int events);
+	void remove(int fd);
+
+	std::vector<struct pollfd> pfds_;        // passed directly to poll()
+	std::vector<Owner>         owners_;      // parallel to pfds_
+	std::vector<int>           fd_to_index_; // fd → index in pfds_
+
+	std::vector<std::pair<Owner,int> > ready_; // temporary storage for ready events
 
 };
