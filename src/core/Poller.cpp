@@ -1,15 +1,19 @@
 #include "core/Poller.hpp"
-#include <poll.h>
-#include <cassert>
+
+#include <cstddef>
+#include <poll.h>         // poll(), struct pollfd, POLLIN, POLLOUT
+
+#define NOT_VALID(fd) ((fd) == -1 || (size_t)(fd) >= fd_to_index_.size() || fd_to_index_[(fd)] == -1)
 
 Poller::Poller() : fd_to_index_(10240, -1) {}
 Poller::~Poller() {}
 
 void Poller::add(int fd, int events, Owner owner)
 {
-	if (fd == -1)
+	if (fd == -1 || events == 0)
 		return;
-	if (fd >= (int)fd_to_index_.size())
+
+	if ((size_t)fd >= fd_to_index_.size())
 		fd_to_index_.resize(fd + 1, -1);
 
 	struct pollfd pfd;
@@ -17,15 +21,15 @@ void Poller::add(int fd, int events, Owner owner)
 	pfd.events  = events;
 	pfd.revents = 0;
 
-	fd_to_index_[fd] = pfds_.size();
-
 	pfds_.push_back(pfd);
 	owners_.push_back(owner);
+
+	fd_to_index_[fd] = pfds_.size() - 1;
 }
 
 void Poller::mod(int fd, int events)
 {
-	if (fd == -1 || fd >= (int)fd_to_index_.size() || fd_to_index_[fd] == -1)
+	if (NOT_VALID(fd))
 		return;
 
 	pfds_[fd_to_index_[fd]].events = events;
@@ -33,17 +37,20 @@ void Poller::mod(int fd, int events)
 
 void Poller::remove(int fd)
 {
-	if (fd == -1 || fd >= (int)fd_to_index_.size() || fd_to_index_[fd] == -1)
+	if (NOT_VALID(fd))
 		return;
 
-	pfds_[fd_to_index_[fd]]   = pfds_.back();
-	owners_[fd_to_index_[fd]] = owners_.back();
-	fd_to_index_[pfds_.back().fd] = fd_to_index_[fd];
+	const int idx     = fd_to_index_[fd];
+	const int last_fd = pfds_.back().fd;
 
-	fd_to_index_[fd]      = -1;
+	pfds_[idx]    = pfds_.back();
+	owners_[idx]  = owners_.back();
 
 	pfds_.pop_back();
 	owners_.pop_back();
+
+	fd_to_index_[last_fd] = idx;
+	fd_to_index_[fd]      = -1;
 }
 
 void Poller::add(Socket &socket, int events, Owner owner) { add(socket.get(), events, owner); }
@@ -52,14 +59,15 @@ void Poller::remove(Socket &socket)                       { remove(socket.get())
 
 void Poller::add(Pipe &pipe, int events, Owner owner)
 {
-	if (events & POLLIN)  add(pipe.getReadFd(),  POLLIN,  owner);
-	if (events & POLLOUT) add(pipe.getWriteFd(), POLLOUT, owner);
+	add(pipe.getReadFd(),  events & POLLIN,  owner);
+	add(pipe.getWriteFd(), events & POLLOUT, owner);
 }
 
+// events must be a subset of what was add()ed originally
 void Poller::mod(Pipe &pipe, int events)
 {
-	if (events & POLLIN)  mod(pipe.getReadFd(),  POLLIN);
-	if (events & POLLOUT) mod(pipe.getWriteFd(), POLLOUT);
+	mod(pipe.getReadFd(),  events & POLLIN);
+	mod(pipe.getWriteFd(), events & POLLOUT);
 }
 
 void Poller::remove(Pipe &pipe)
