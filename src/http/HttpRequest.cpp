@@ -1,7 +1,8 @@
 #include "http/HTTPRequest.hpp"		// HTTPRequest class definition
-#include "http/HttpStatusCodes.hpp"	// BadRequest, URITooLong, RequestHeaderFieldsTooLarge, HTTPVersionNotSupported
+#include "http/HttpStatusCodes.hpp"	// BadRequest, URITooLong, RequestHeaderFieldsTooLarge, HTTPVersionNotSupported, NotImplemented
 #include "utils/StringUtils.hpp"	// toLower, trim
 #include <string>					// std::string, find, substr, rfind, size, empty
+#include <cstdlib>					// std::strtoul
 
 #define MAX_REQUEST_LINE_SIZE 8192
 #define MAX_HEADER_SIZE       16384
@@ -10,7 +11,7 @@
 using namespace HttpStatus;
 using namespace StringUtils;
 
-HTTPRequest::HTTPRequest(size_t maxBodySize) : complete_(false), headerParsed_(false), errorCode_(0), maxBodySize_(maxBodySize), bytesParsed_(0) {}
+HTTPRequest::HTTPRequest(size_t maxBodySize) : complete_(false), headerParsed_(false), requestLineParsed_(false), errorCode_(0), maxBodySize_(maxBodySize), bytesParsed_(0), contentLength_(0), chunked_(false) {}
 
 bool HTTPRequest::isComplete() const { return complete_; }
 bool HTTPRequest::isChunked() const { return chunked_; }
@@ -36,9 +37,9 @@ static int diagnoseRequestLineError(const std::string &line)
 	std::string version = line.substr(last + 1);
 	if (version == "HTTP/1.0" || version == "HTTP/1.1")
 		return 0; // valid
-	if (version.size() == 8 && version.substr(0, 5) == "HTTP/" 
-		&& std::isdigit((unsigned char)version[5]) 
-		&& version[6] == '.' 
+	if (version.size() == 8 && version.substr(0, 5) == "HTTP/"
+		&& std::isdigit((unsigned char)version[5])
+		&& version[6] == '.'
 		&& std::isdigit((unsigned char)version[7]))
 		return HTTPVersionNotSupported;
 	return BadRequest;
@@ -51,7 +52,7 @@ bool HTTPRequest::tryExtractRequestLine(std::string &line)
 	{
 		if (rawBuffer_.size() - bytesParsed_ > MAX_REQUEST_LINE_SIZE)
 			errorCode_ = diagnoseRequestLineError(rawBuffer_.substr(bytesParsed_));
-		return false;
+		return false; // incomplete data
 	}
 	if (lineEnd - bytesParsed_ > MAX_REQUEST_LINE_SIZE)
 	{
@@ -70,20 +71,79 @@ bool HTTPRequest::tryParseRequestLine()
 	std::string line;
 	if (!tryExtractRequestLine(line))
 		return false; // incomplete data
+	errorCode_ = diagnoseRequestLineError(line);
+	if (errorCode_)
+		return false;
 	size_t first = line.find(' ');
 	size_t last  = line.rfind(' ');
-	if (first == std::string::npos || first == last)
+	method_  = line.substr(0, first);
+	uri_     = line.substr(first + 1, last - first - 1);
+	version_ = line.substr(last + 1);
+	requestLineParsed_ = true;
+	return true;
+}
+
+bool HTTPRequest::tryParseHeaders()
+{
+	size_t headersEnd = rawBuffer_.find("\r\n\r\n", bytesParsed_);
+	if (headersEnd == std::string::npos)
+	{
+		if (rawBuffer_.size() - bytesParsed_ > MAX_HEADER_SIZE)
+			errorCode_ = RequestHeaderFieldsTooLarge;
+		return false; // incomplete data
+	}
+	std::string headersPart = rawBuffer_.substr(bytesParsed_, headersEnd - bytesParsed_);
+	bytesParsed_ = headersEnd + 4;
+	size_t pos = 0;
+	while (pos < headersPart.size())
+	{
+		size_t lineEnd = headersPart.find("\r\n", pos);
+		if (lineEnd == std::string::npos)
+			break;
+		std::string line = headersPart.substr(pos, lineEnd - pos);
+		pos = lineEnd + 2;
+		size_t colonPos = line.find(':');
+		if (colonPos == std::string::npos)
+		{
+			errorCode_ = BadRequest;
+			return false;
+		}
+		std::string name  = toLower(trim(line.substr(0, colonPos)));
+		std::string value = trim(line.substr(colonPos + 1));
+		headers_[name] = value;
+	}
+	// chunked takes precedence over content-length per RFC
+	std::map<std::string, std::string>::const_iterator te = headers_.find("transfer-encoding");
+	chunked_ = (te != headers_.end() && toLower(te->second) == "chunked");
+	if (chunked_ && version_ == "HTTP/1.0")
 	{
 		errorCode_ = BadRequest;
 		return false;
 	}
-	method_  = line.substr(0, first);
-	uri_     = line.substr(first + 1, last - first - 1);
-	version_ = line.substr(last + 1);
-	errorCode_ = diagnoseRequestLineError(line);
-	if (errorCode_)
+	if (!chunked_)
+	{
+		std::map<std::string, std::string>::const_iterator cl = headers_.find("content-length");
+		if (cl != headers_.end())
+		{
+			char *end;
+			if (cl->second.empty() || !std::isdigit((unsigned char)cl->second[0]))
+			{
+				errorCode_ = BadRequest; // content-length must be a non-negative integer
+				return false;
+			}
+			contentLength_ = std::strtoul(cl->second.c_str(), &end, 10);
+			if (*end != '\0')
+			{
+				errorCode_ = BadRequest; // non-numeric content-length
+				return false;
+			}
+		}
+	}
+	if (version_ == "HTTP/1.1" && headers_.find("host") == headers_.end())
+	{
+		errorCode_ = BadRequest;
 		return false;
-	requestLineParsed_ = true;
+	}
 	return true;
 }
 
