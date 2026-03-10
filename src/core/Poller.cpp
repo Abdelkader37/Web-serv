@@ -3,7 +3,6 @@
 #define NOT_VALID(fd) ((fd) == -1 || (size_t)(fd) >= fd_to_index_.size() || fd_to_index_[(fd)] == -1)
 
 Poller::Poller() : fd_to_index_(10240, -1) {}
-Poller::~Poller() {}
 
 void Poller::add(int fd, int events, FdContext fdContext)
 {

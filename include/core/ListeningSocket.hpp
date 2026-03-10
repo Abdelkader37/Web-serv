@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/Socket.hpp" // Socket class
-#include <string>          // std::string
+#include "core/Socket.hpp"	// Socket class
+#include <string>			// std::string
 
 class ListeningSocket : public Socket
 {

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Socket.hpp"      // Socket
-#include "Pipe.hpp"        // Pipe
-#include <vector>          // std::vector
-#include <poll.h>          // struct pollfd
+#include "Socket.hpp"		// Socket
+#include "Pipe.hpp"			// Pipe
+#include <vector>			// std::vector
+#include <poll.h>			// struct pollfd
 
 // for readability
 typedef void* FdContext;
@@ -15,7 +15,6 @@ class Poller
 public:
 
 	Poller();
-	~Poller();
 
 	// fdContext: caller context passed back in dispatcher, avoids fd-to-object lookup
 	void add(Socket &socket, int events, FdContext fdContext);
@@ -40,12 +39,12 @@ private:
 	void mod(int fd, int events);
 	void remove(int fd);
 
-	std::vector<struct pollfd> pfds_;        // passed directly to poll()
-	std::vector<FdContext>     fdContexts_;  // parallel to pfds_
-	std::vector<int>           fd_to_index_; // fd_to_index_[fd] → index in pfds_ and fdContexts_
+	std::vector<struct pollfd>	pfds_;        // passed directly to poll()
+	std::vector<FdContext>		fdContexts_;  // parallel to pfds_
+	std::vector<int>			fd_to_index_; // fd_to_index_[fd] → index in pfds_ and fdContexts_
 
 	// temporary storage for dispatch
-	std::vector<FdContext> ready_fdContexts_;
-	std::vector<int>   ready_revents_;
+	std::vector<FdContext>	ready_fdContexts_;
+	std::vector<int>		ready_revents_;
 
 };
