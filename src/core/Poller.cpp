@@ -1,14 +1,11 @@
 #include "core/Poller.hpp"
 
-#include <cstddef>
-#include <poll.h>         // poll(), struct pollfd, POLLIN, POLLOUT
-
 #define NOT_VALID(fd) ((fd) == -1 || (size_t)(fd) >= fd_to_index_.size() || fd_to_index_[(fd)] == -1)
 
 Poller::Poller() : fd_to_index_(10240, -1) {}
 Poller::~Poller() {}
 
-void Poller::add(int fd, int events, Owner owner)
+void Poller::add(int fd, int events, FdContext fdContext)
 {
 	if (fd == -1 || events == 0)
 		return;
@@ -22,7 +19,7 @@ void Poller::add(int fd, int events, Owner owner)
 	pfd.revents = 0;
 
 	pfds_.push_back(pfd);
-	owners_.push_back(owner);
+	fdContexts_.push_back(fdContext);
 
 	fd_to_index_[fd] = pfds_.size() - 1;
 }
@@ -44,30 +41,23 @@ void Poller::remove(int fd)
 	const int last_fd = pfds_.back().fd;
 
 	pfds_[idx]    = pfds_.back();
-	owners_[idx]  = owners_.back();
+	fdContexts_[idx]  = fdContexts_.back();
 
 	pfds_.pop_back();
-	owners_.pop_back();
+	fdContexts_.pop_back();
 
 	fd_to_index_[last_fd] = idx;
 	fd_to_index_[fd]      = -1;
 }
 
-void Poller::add(Socket &socket, int events, Owner owner) { add(socket.get(), events, owner); }
+void Poller::add(Socket &socket, int events, FdContext fdContext) { add(socket.get(), events, fdContext); }
 void Poller::mod(Socket &socket, int events)              { mod(socket.get(), events); }
 void Poller::remove(Socket &socket)                       { remove(socket.get()); }
 
-void Poller::add(Pipe &pipe, int events, Owner owner)
+void Poller::add(Pipe &pipe, int events, FdContext fdContext)
 {
-	add(pipe.getReadFd(),  events & POLLIN,  owner);
-	add(pipe.getWriteFd(), events & POLLOUT, owner);
-}
-
-// events must be a subset of what was add()ed originally
-void Poller::mod(Pipe &pipe, int events)
-{
-	mod(pipe.getReadFd(),  events & POLLIN);
-	mod(pipe.getWriteFd(), events & POLLOUT);
+	add(pipe.getReadFd(),  events & POLLIN,  fdContext);
+	add(pipe.getWriteFd(), events & POLLOUT, fdContext);
 }
 
 void Poller::remove(Pipe &pipe)
@@ -76,18 +66,24 @@ void Poller::remove(Pipe &pipe)
 	remove(pipe.getWriteFd());
 }
 
-void Poller::waitAndDispatch(int timeout_ms, void (*dispatcher)(Owner owner, int revents))
+// This mess is because you can't pass a member function pointer as a C callback in C++98
+// invoker: pointer to the object calling waitAndDispatch, passed back to the dispatcher
+void Poller::waitAndDispatch(int timeout_ms, void (*dispatcher)(FdContext fdContext, int revents, void *invoker), Invoker invoker)
 {
 
 	int num_events = poll(pfds_.data(), pfds_.size(), timeout_ms);
 	if (num_events <= 0)
 		return;
 
-	ready_.clear();
+	ready_fdContexts_.clear();
+	ready_revents_.clear();
 	for (size_t i = 0; i < pfds_.size(); ++i)
 		if (pfds_[i].revents != 0)
-			ready_.push_back(std::make_pair(owners_[i], pfds_[i].revents));
+		{
+			ready_fdContexts_.push_back(fdContexts_[i]);
+			ready_revents_.push_back(pfds_[i].revents);
+		}
 
-	for (size_t i = 0; i < ready_.size(); ++i)
-		dispatcher(ready_[i].first, ready_[i].second);
+	for (size_t i = 0; i < ready_fdContexts_.size(); ++i)
+		dispatcher(ready_fdContexts_[i], ready_revents_[i], invoker);
 }
