@@ -13,7 +13,6 @@ public:
 	void parse(const std::string& rawBytes);
 
 	bool isComplete() const;
-	bool isChunked() const;
 	const std::string &getMethod() const;
 	const std::string &getUri() const;
 	const std::string &getVersion() const;
@@ -26,10 +25,11 @@ private:
 	// can't be default constructed, must provide max body size
 	HTTPRequest();
 
-	bool tryExtractRequestLine(std::string &line);
-	bool tryParseRequestLine();
+	bool extractRequestLine(std::string &line, size_t &first, size_t &last);
+	bool parseRequestLine();
 
-	bool tryParseHeaders();
+	bool ExtractHeaders(std::string &headersPart);
+	bool parseHeaders();
 
 	void parseBody();
 	void parseChunkedBody();

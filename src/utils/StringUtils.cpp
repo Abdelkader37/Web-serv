@@ -18,3 +18,13 @@ std::string StringUtils::trim(const std::string &s)
 		--end;
 	return s.substr(start, end - start);
 }
+
+bool StringUtils::isAllDigits(const std::string &s, size_t start, size_t end)
+{
+	if (start >= end)
+		return false; // empty range
+	for (size_t i = start; i < end; i++)
+		if (!std::isdigit((unsigned char)s[i]))
+			return false;
+	return true;
+}

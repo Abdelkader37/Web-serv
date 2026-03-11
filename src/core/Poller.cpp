@@ -65,8 +65,9 @@ void Poller::remove(Pipe &pipe)
 	remove(pipe.getWriteFd());
 }
 
-// This mess is because you can't pass a member function pointer as a C callback in C++98
-// invoker: pointer to the object calling waitAndDispatch, passed back to the dispatcher
+// This mess is because you can't pass a member function pointer as arg in C++98
+// fdContext: context associated with the fd
+// invoker: pointer to the object calling waitAndDispatch (this pointer in the caller)
 void Poller::waitAndDispatch(int timeout_ms, void (*dispatcher)(FdContext fdContext, int revents, void *invoker), Invoker invoker)
 {
 

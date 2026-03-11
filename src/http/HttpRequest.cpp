@@ -1,20 +1,27 @@
 #include "http/HTTPRequest.hpp"		// HTTPRequest class definition
 #include "http/HttpStatusCodes.hpp"	// BadRequest, URITooLong, RequestHeaderFieldsTooLarge, HTTPVersionNotSupported, NotImplemented
 #include "utils/StringUtils.hpp"	// toLower, trim
+#include <cstddef>
 #include <string>					// std::string, find, substr, rfind, size, empty
 #include <cstdlib>					// std::strtoul
+#include <algorithm>				// std::count
 
-#define MAX_REQUEST_LINE_SIZE 8192
-#define MAX_HEADER_SIZE       16384
-#define MAX_URI_SIZE          MAX_REQUEST_LINE_SIZE - 16 // method(max 4 chars) + space + version(max 8 chars) + space + CRLF(2 chars)
+#define MAX_REQUEST_LINE_SIZE 8192 // 8KB
+#define MAX_URI_SIZE          (MAX_REQUEST_LINE_SIZE - 15) // method(min 3 chars) + space + version(8 chars) + space + CRLF(2 chars)
+#define MAX_HEADER_SIZE       16384 // 16KB
 
 using namespace HttpStatus;
 using namespace StringUtils;
 
-HTTPRequest::HTTPRequest(size_t maxBodySize) : complete_(false), headerParsed_(false), requestLineParsed_(false), errorCode_(0), maxBodySize_(maxBodySize), bytesParsed_(0), contentLength_(0), chunked_(false) {}
+HTTPRequest::HTTPRequest(size_t maxBodySize) : complete_(false), headerParsed_(false), requestLineParsed_(false), errorCode_(0), maxBodySize_(maxBodySize), bytesParsed_(0), contentLength_(0), chunked_(false)
+{
+	rawBuffer_.reserve(MAX_REQUEST_LINE_SIZE + MAX_HEADER_SIZE + maxBodySize_);
+	method_.reserve(4);
+	uri_.reserve(MAX_URI_SIZE);
+	version_.reserve(8);
+}
 
 bool HTTPRequest::isComplete() const { return complete_; }
-bool HTTPRequest::isChunked() const { return chunked_; }
 const std::string &HTTPRequest::getMethod() const { return method_; }
 const std::string &HTTPRequest::getUri() const { return uri_; }
 const std::string &HTTPRequest::getVersion() const { return version_; }
@@ -22,60 +29,95 @@ const std::map<std::string, std::string> &HTTPRequest::getHeaders() const { retu
 const std::string &HTTPRequest::getBody() const { return body_; }
 int HTTPRequest::errorCode() const { return errorCode_; }
 
-static bool isValidMethod(const std::string &method) { return method == "GET" || method == "POST" || method == "DELETE"; }
 
-static int diagnoseRequestLineError(const std::string &line)
+
+
+
+
+static bool isValidMethodToken(const std::string &method)
 {
-	size_t first = line.find(' ');
-	size_t last  = line.rfind(' ');
-	if (first == std::string::npos || first == last)
-		return BadRequest;
-	if (!isValidMethod(line.substr(0, first)))
-		return NotImplemented;
-	if (last - first - 1 > MAX_URI_SIZE)
-		return URITooLong;
-	std::string version = line.substr(last + 1);
-	if (version == "HTTP/1.0" || version == "HTTP/1.1")
-		return 0; // valid
-	if (version.size() == 8 && version.substr(0, 5) == "HTTP/"
-		&& std::isdigit((unsigned char)version[5])
-		&& version[6] == '.'
-		&& std::isdigit((unsigned char)version[7]))
-		return HTTPVersionNotSupported;
-	return BadRequest;
+	static const std::string tchars = "!#$%&'*+-.^_`|~";
+	if (method.empty())
+		return false;
+	for (size_t i = 0; i < method.size(); i++)
+	{
+		unsigned char c = method[i];
+		if (!std::isalnum(c) && tchars.find(c) == std::string::npos)
+			return false;
+	}
+	return true;
 }
 
-bool HTTPRequest::tryExtractRequestLine(std::string &line)
+static bool isValidMethod(const std::string &method)
 {
-	size_t lineEnd = rawBuffer_.find("\r\n", bytesParsed_);
+	return method == "GET" || method == "POST" || method == "DELETE";
+}
+
+static int isValidVersion(const std::string &version, bool complete)
+{
+	if (version == "HTTP/1.0" || version == "HTTP/1.1")
+		return 0;
+	if (version.size() > 16)
+		return version.find('.') != std::string::npos ? HTTPVersionNotSupported : BadRequest;
+	static const std::string prefix = "HTTP/";
+	if (version.size() < prefix.size())
+		return prefix.substr(0, version.size()) == version ? (complete ? BadRequest : 0) : BadRequest;
+	if (version.substr(0, 5) != "HTTP/")
+		return BadRequest;
+	if (!complete)
+		return 0; // valid prefix so far, wait for more
+	size_t dot = version.find('.', 5);
+	if (dot == std::string::npos)
+		return BadRequest;
+	if (!isAllDigits(version, 5, dot) || !isAllDigits(version, dot + 1, version.size()))
+		return BadRequest;
+	return HTTPVersionNotSupported;
+}
+
+static int isValidRequestLine(const std::string &line, size_t &first, size_t &last, bool complete)
+{
+	size_t spaceCount = std::count(line.begin(), line.end(), ' ');
+	if (spaceCount == 0 || spaceCount > 2)
+		return BadRequest;
+	first = line.find(' ');
+	std::string method = line.substr(0, first);
+	if (!isValidMethodToken(method))
+		return BadRequest;
+	if (!isValidMethod(method))
+		return NotImplemented;
+	last = line.rfind(' ');
+	if (last - first - 1 > MAX_URI_SIZE)
+		return URITooLong;
+	if (spaceCount == 1)
+		return complete ? BadRequest : 0; // soft overflow — valid method, URI within limit, no version, wait to see if space and version come in next chunk, if not, uri will hit the limit and return URITooLong
+	return isValidVersion(line.substr(last + 1), complete);;
+}
+
+bool HTTPRequest::extractRequestLine(std::string &line, size_t &first, size_t &last)
+{
+	size_t lineEnd = rawBuffer_.find("\r\n");
 	if (lineEnd == std::string::npos)
 	{
-		if (rawBuffer_.size() - bytesParsed_ > MAX_REQUEST_LINE_SIZE)
-			errorCode_ = diagnoseRequestLineError(rawBuffer_.substr(bytesParsed_));
+		if (rawBuffer_.size() > MAX_REQUEST_LINE_SIZE)
+			errorCode_ = isValidRequestLine(rawBuffer_, first, last, false);
 		return false; // incomplete data
 	}
-	if (lineEnd - bytesParsed_ > MAX_REQUEST_LINE_SIZE)
-	{
-		errorCode_ = diagnoseRequestLineError(rawBuffer_.substr(bytesParsed_, lineEnd - bytesParsed_));
+	line = rawBuffer_.substr(0, lineEnd);
+	errorCode_ = isValidRequestLine(line, first, last, true);
+	if (errorCode_)
 		return false;
-	}
-	line = rawBuffer_.substr(bytesParsed_, lineEnd - bytesParsed_);
 	bytesParsed_ = lineEnd + 2;
 	return true;
 }
 
-bool HTTPRequest::tryParseRequestLine()
+bool HTTPRequest::parseRequestLine()
 {
 	if (requestLineParsed_)
 		return true;
 	std::string line;
-	if (!tryExtractRequestLine(line))
-		return false; // incomplete data
-	errorCode_ = diagnoseRequestLineError(line);
-	if (errorCode_)
-		return false;
-	size_t first = line.find(' ');
-	size_t last  = line.rfind(' ');
+	size_t first = 0, last = 0;
+	if (!extractRequestLine(line, first, last))
+		return false; // incomplete data or invalid
 	method_  = line.substr(0, first);
 	uri_     = line.substr(first + 1, last - first - 1);
 	version_ = line.substr(last + 1);
@@ -83,7 +125,12 @@ bool HTTPRequest::tryParseRequestLine()
 	return true;
 }
 
-bool HTTPRequest::tryParseHeaders()
+
+
+
+
+
+bool HTTPRequest::ExtractHeaders(std::string &headersPart)
 {
 	size_t headersEnd = rawBuffer_.find("\r\n\r\n", bytesParsed_);
 	if (headersEnd == std::string::npos)
@@ -92,8 +139,53 @@ bool HTTPRequest::tryParseHeaders()
 			errorCode_ = RequestHeaderFieldsTooLarge;
 		return false; // incomplete data
 	}
-	std::string headersPart = rawBuffer_.substr(bytesParsed_, headersEnd - bytesParsed_);
+	headersPart = rawBuffer_.substr(bytesParsed_, headersEnd - bytesParsed_);
 	bytesParsed_ = headersEnd + 4;
+	return true;
+}
+
+static bool parseChunked(const std::map<std::string, std::string> &headers, const std::string &version, bool &chunked)
+{
+	std::map<std::string, std::string>::const_iterator te = headers.find("transfer-encoding");
+	chunked = (te != headers.end() && toLower(te->second) == "chunked");
+	return !(chunked && version == "HTTP/1.0");
+}
+
+static bool parseContentLength(const std::map<std::string, std::string> &headers, size_t &contentLength)
+{
+	std::map<std::string, std::string>::const_iterator cl = headers.find("content-length");
+	if (cl == headers.end())
+		return true;
+	if (cl->second.empty() || !std::isdigit((unsigned char)cl->second[0]))
+		return false;
+	char *end;
+	contentLength = std::strtoul(cl->second.c_str(), &end, 10);
+	return *end == '\0';
+}
+
+static bool isValidHost(const std::map<std::string, std::string> &headers, const std::string &version)
+{
+	return !(version == "HTTP/1.1" && headers.find("host") == headers.end());
+}
+
+static int areValidHeaders(const std::map<std::string, std::string> &headers, const std::string &version, size_t &contentLength, bool &chunked)
+{
+	if (!parseChunked(headers, version, chunked))
+		return (BadRequest);
+	if (!chunked && !parseContentLength(headers, contentLength))
+		return BadRequest;
+	if (!isValidHost(headers, version))
+		return BadRequest;
+	return 0;
+}
+
+bool HTTPRequest::parseHeaders()
+{
+	if (headerParsed_)
+		return true;
+	std::string headersPart;
+	if (!ExtractHeaders(headersPart))
+		return false; // incomplete data
 	size_t pos = 0;
 	while (pos < headersPart.size())
 	{
@@ -112,51 +204,41 @@ bool HTTPRequest::tryParseHeaders()
 		std::string value = trim(line.substr(colonPos + 1));
 		headers_[name] = value;
 	}
-	// chunked takes precedence over content-length per RFC
-	std::map<std::string, std::string>::const_iterator te = headers_.find("transfer-encoding");
-	chunked_ = (te != headers_.end() && toLower(te->second) == "chunked");
-	if (chunked_ && version_ == "HTTP/1.0")
-	{
-		errorCode_ = BadRequest;
+	errorCode_ = areValidHeaders(headers_, version_, contentLength_, chunked_);
+	if (errorCode_)
 		return false;
-	}
 	if (!chunked_)
 	{
-		std::map<std::string, std::string>::const_iterator cl = headers_.find("content-length");
-		if (cl != headers_.end())
+		if (contentLength_ > maxBodySize_)
 		{
-			char *end;
-			if (cl->second.empty() || !std::isdigit((unsigned char)cl->second[0]))
-			{
-				errorCode_ = BadRequest; // content-length must be a non-negative integer
-				return false;
-			}
-			contentLength_ = std::strtoul(cl->second.c_str(), &end, 10);
-			if (*end != '\0')
-			{
-				errorCode_ = BadRequest; // non-numeric content-length
-				return false;
-			}
+			errorCode_ = ContentTooLarge;
+			return false;
 		}
-	}
-	if (version_ == "HTTP/1.1" && headers_.find("host") == headers_.end())
-	{
-		errorCode_ = BadRequest;
-		return false;
+		body_.reserve(contentLength_);
 	}
 	return true;
 }
+
+
+
+
+
 
 void HTTPRequest::parse(const std::string &rawBytes)
 {
 	if (complete_ || errorCode_)
 		return;
+	if (rawBuffer_.size() + rawBytes.size() > MAX_REQUEST_LINE_SIZE + MAX_HEADER_SIZE + maxBodySize_)
+	{
+		errorCode_ = ContentTooLarge;
+		return;
+	}
 	rawBuffer_ += rawBytes;
 	if (!headerParsed_)
 	{
-		if (!tryParseRequestLine())
+		if (!parseRequestLine())
 			return;
-		if (!tryParseHeaders())
+		if (!parseHeaders())
 			return;
 		headerParsed_ = true;
 	}

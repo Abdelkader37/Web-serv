@@ -7,8 +7,6 @@ namespace HttpStatus
 
 enum Code
 {
-	Invalid = -1,
-
 	/*####### 2xx - Successful #######*/
 	OK        = 200,
 	Created   = 201,
@@ -27,6 +25,7 @@ enum Code
 	NotFound                    = 404,
 	MethodNotAllowed            = 405,
 	ContentTooLarge             = 413,
+	IamATeapot                  = 418,
 	URITooLong                  = 414,
 	RequestHeaderFieldsTooLarge = 431,
 
@@ -35,8 +34,6 @@ enum Code
 	NotImplemented          = 501,
 	GatewayTimeout          = 504,
 	HTTPVersionNotSupported = 505,
-
-	xxx_max = 1023
 };
 
 inline std::string reasonPhrase(int code)

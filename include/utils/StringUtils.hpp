@@ -4,6 +4,7 @@
 
 namespace StringUtils
 {
-	std::string toLower(const std::string &s);
-	std::string trim(const std::string &s);
+	std::string	toLower(const std::string &s);
+	std::string	trim(const std::string &s);
+	bool 		isAllDigits(const std::string &s, size_t start, size_t end);
 }
