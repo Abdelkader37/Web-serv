@@ -1,4 +1,4 @@
-#include "core/Poller.hpp"
+#include "core/Poller.hpp"			// Poller
 
 #define NOT_VALID(fd) ((fd) == -1 || (size_t)(fd) >= fd_to_index_.size() || fd_to_index_[(fd)] == -1)
 
@@ -37,16 +37,18 @@ void Poller::remove(int fd)
 		return;
 
 	const int idx     = fd_to_index_[fd];
-	const int last_fd = pfds_.back().fd;
 
-	pfds_[idx]    = pfds_.back();
-	fdContexts_[idx]  = fdContexts_.back();
+	if (idx != (int)pfds_.size() - 1)
+	{
+		const int last_fd		= pfds_.back().fd;
+		pfds_[idx]				= pfds_.back();
+		fdContexts_[idx]		= fdContexts_.back();
+		fd_to_index_[last_fd]	= idx;
+	}
 
 	pfds_.pop_back();
 	fdContexts_.pop_back();
-
-	fd_to_index_[last_fd] = idx;
-	fd_to_index_[fd]      = -1;
+	fd_to_index_[fd] = -1;
 }
 
 void Poller::add(Socket &socket, int events, FdContext fdContext) { add(socket.get(), events, fdContext); }
@@ -70,9 +72,7 @@ void Poller::remove(Pipe &pipe)
 // invoker: pointer to the object calling waitAndDispatch (this pointer in the caller)
 void Poller::waitAndDispatch(int timeout_ms, void (*dispatcher)(FdContext fdContext, int revents, void *invoker), Invoker invoker)
 {
-
-	int num_events = poll(pfds_.data(), pfds_.size(), timeout_ms);
-	if (num_events <= 0)
+	if (pfds_.empty() || poll(&pfds_[0], pfds_.size(), timeout_ms) <= 0)
 		return;
 
 	ready_fdContexts_.clear();

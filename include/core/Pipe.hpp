@@ -19,7 +19,7 @@ private:
 	// Non-copyable
 	Pipe(const Pipe&);
 	// Non-assignable
-	Pipe& operator=(const Pipe&);
+	Pipe &operator=(const Pipe&);
 
 	int readFd_;
 	int writeFd_;

@@ -1,8 +1,9 @@
-#include "core/ListeningSocket.hpp"
+#include "core/ListeningSocket.hpp"	// ListeningSocket
 
-#include <sys/socket.h>    // setsockopt, bind, listen, SOL_SOCKET, SO_REUSEADDR, SOMAXCONN
-#include <netdb.h>         // getaddrinfo, freeaddrinfo, gai_strerror, addrinfo, AI_PASSIVE
-#include <netinet/in.h>    // sockaddr_in, AF_INET
+#include <sys/socket.h>				// setsockopt, bind, listen, SOL_SOCKET, SO_REUSEADDR, SOMAXCONN
+#include <netdb.h>					// getaddrinfo, freeaddrinfo, gai_strerror, addrinfo, AI_PASSIVE
+#include <netinet/in.h>				// sockaddr_in, AF_INET
+#include <stdexcept>				// std::runtime_error
 
 ListeningSocket::ListeningSocket(const std::string &bind_address, const std::string &bind_port) : Socket()
 {

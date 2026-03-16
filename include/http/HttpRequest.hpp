@@ -1,63 +1,62 @@
 #pragma once
 
-#include <string>			// std::string
-#include <map>				// std::map
+#include <string>					// std::string
+#include <map>						// std::map
 
-class HTTPRequest
+#define MAX_REQUEST_LINE_SIZE 8192  // 8KB
+#define MAX_HEADER_SIZE       16384 // 16KB
+
+class HttpRequest
 {
 
 public:
 
-	HTTPRequest(size_t maxBodySize);
+	HttpRequest(size_t maxBodySize);
 
-	void parse(const std::string& rawBytes);
+	void parse(const std::string &rawBytes);
 
-	bool isComplete() const;
-	const std::string &getMethod() const;
-	const std::string &getUri() const;
-	const std::string &getVersion() const;
-	const std::map<std::string, std::string> &getHeaders() const;
-	const std::string &getBody() const;
-	int errorCode() const;
+	void reset();
+
+	bool										complete() const;
+	const std::string							&method() const;
+	const std::string							&uri() const;
+	const std::string							&version() const;
+	const std::map<std::string, std::string>	&headers() const;
+	const std::string							&body() const;
+	int											errorCode() const;
 
 private:
 
 	// can't be default constructed, must provide max body size
-	HTTPRequest();
-
-	bool extractRequestLine(std::string &line, size_t &first, size_t &last);
-	bool parseRequestLine();
-
-	bool ExtractHeaders(std::string &headersPart);
-	bool parseHeaders();
-
-	void parseBody();
-	void parseChunkedBody();
-	void parseFixedBody();
-
-	void setError(int code);
-
-	std::string		rawBuffer_;
-	size_t			bytesParsed_;
-
-	// parsing state
-	bool			complete_; 
-	bool			headerParsed_;
-	int				errorCode_;
+	HttpRequest();
 
 	// request line
-	std::string		method_;
-	std::string		uri_;
-	std::string		version_;
-	bool			requestLineParsed_;
+	bool parseRequestLine();
 
 	// headers
-	std::map<std::string, std::string> headers_;
+	bool parseHeaders();
 
 	// body
-	std::string		body_;
-	size_t			contentLength_;   // parsed from Content-Length header, 0 if absent
-	size_t			maxBodySize_;    // injected at construction, checked during buffering
-	bool			chunked_;          // true if Transfer-Encoding: chunked
+	void parseBody();
+
+	void cleanBuffer();
+
+	// state
+	bool	complete_;
+	bool	headerParsed_;
+	bool	requestLineParsed_;
+	int		errorCode_;
+	size_t	maxBodySize_;
+	size_t	bytesParsed_;
+	size_t	contentLength_;
+	bool	chunked_;
+
+	// data
+	std::string							rawBuffer_;
+	std::string							method_;
+	std::string							uri_;
+	std::string							version_;
+	std::map<std::string, std::string>	headers_;
+	std::string							body_;
 
 };

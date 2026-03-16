@@ -1,4 +1,4 @@
-#include "utils/StringUtils.hpp"
+#include "utils/StringUtils.hpp"	// toLower, trim, isAllDigits, hasInvalidChar
 
 std::string StringUtils::toLower(const std::string &s)
 {
@@ -22,9 +22,14 @@ std::string StringUtils::trim(const std::string &s)
 bool StringUtils::isAllDigits(const std::string &s, size_t start, size_t end)
 {
 	if (start >= end)
-		return false; // empty range
+		return false;
 	for (size_t i = start; i < end; i++)
 		if (!std::isdigit((unsigned char)s[i]))
 			return false;
 	return true;
+}
+
+bool StringUtils::hasInvalidChar(const std::string &s, const std::string &invalid, size_t from)
+{
+	return s.find_first_of(invalid, from) != std::string::npos;
 }

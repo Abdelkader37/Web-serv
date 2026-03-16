@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Socket.hpp"		// Socket
-#include "Pipe.hpp"			// Pipe
-#include <vector>			// std::vector
-#include <poll.h>			// struct pollfd
+#include "core/Socket.hpp"			// Socket
+#include "core/Pipe.hpp"			// Pipe
+
+#include <vector>					// std::vector
+#include <poll.h>					// struct pollfd
 
 // for readability
 typedef void* FdContext;
@@ -33,7 +34,7 @@ private:
 	// Non-copyable
 	Poller(const Poller&);
 	// Non-assignable
-	Poller& operator=(const Poller&);
+	Poller &operator=(const Poller&);
 
 	void add(int fd, int events, FdContext fdContext);
 	void mod(int fd, int events);

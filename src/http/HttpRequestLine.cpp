@@ -1,0 +1,147 @@
+#include "http/HttpRequest.hpp"		// MAX_REQUEST_LINE_SIZE
+#include "http/HttpStatusCodes.hpp"	// BadRequest, URITooLong, HTTPVersionNotSupported, NotImplemented, NeedMoreData
+#include "utils/StringUtils.hpp"	// isAllDigits
+
+#include <string>					// std::string
+#include <algorithm>				// std::count
+
+#define MAX_URI_SIZE (MAX_REQUEST_LINE_SIZE - 15)
+
+#define VALID 0
+
+using namespace HttpStatus;
+using namespace StringUtils;
+
+// Method
+
+static bool isValidMethodChar(unsigned char c)
+{
+	static const std::string allowedSpecials("!#$%&'*+-.^_`|~");
+	return std::isalnum(c) || allowedSpecials.find(c) != std::string::npos;
+}
+
+static bool isValidMethod(const std::string &s)
+{
+	for (size_t i = 0; i < s.size(); i++)
+		if (!isValidMethodChar(s[i]))
+			return false;
+	return true;
+}
+
+static bool isSupportedMethod(const std::string &method)
+{
+	return method == "GET" || method == "POST" || method == "DELETE";
+}
+
+int validateMethod(const std::string &method)
+{
+	if (method.empty()
+	|| !isValidMethod(method))
+		return BadRequest;
+	if (!isSupportedMethod(method))
+		return NotImplemented;
+	return VALID;
+}
+
+// URI
+
+static int validateURI(size_t firstSpace, size_t lastSpace)
+{
+	if (lastSpace <= firstSpace + 1)
+		return BadRequest;
+	if (lastSpace - firstSpace - 1 > MAX_URI_SIZE)
+		return URITooLong;
+	return VALID;
+}
+
+// Version
+
+static bool isKnownVersion(const std::string &version)
+{
+	return version == "HTTP/1.0" || version == "HTTP/1.1";
+}
+
+static bool hasFullHttpPrefix(const std::string &version)
+{
+	return version.size() >= 5 && version.substr(0, 5) == "HTTP/";
+}
+
+static bool isIncompleteHttpPrefix(const std::string &version)
+{
+	return version.size() <= 5 && std::string("HTTP/").find(version) == 0;
+}
+
+static int validateVersionNumbers(const std::string &version)
+{
+	size_t dot = version.find('.', 5);
+	if (dot == std::string::npos || !isAllDigits(version, 5, dot) || !isAllDigits(version, dot + 1, version.size()))
+		return BadRequest;
+	return HTTPVersionNotSupported;
+}
+
+int validateVersion(const std::string &version, bool endFound)
+{
+	if (isKnownVersion(version))
+		return VALID;
+
+	if (!hasFullHttpPrefix(version))
+	{
+		if (isIncompleteHttpPrefix(version))
+			return endFound ? BadRequest : NeedMoreData;
+		return BadRequest;
+	}
+
+	if (!endFound && version.size() < 16)
+		return NeedMoreData;
+
+	return validateVersionNumbers(version);
+}
+
+// Request line
+
+static bool locateSpaces(const std::string &line, size_t &firstSpace, size_t &lastSpace, size_t &spaceCount, bool endFound)
+{
+	spaceCount = std::count(line.begin(), line.end(), ' ');
+	if (spaceCount == 0)
+	{
+		// force fall-through for proper error code instead of generic BadRequest
+		if (endFound || line.size() > MAX_REQUEST_LINE_SIZE)
+		{
+			firstSpace = lastSpace = line.size();
+			return true;
+		}
+		return false;
+	}
+	firstSpace = line.find(' ');
+	lastSpace  = line.rfind(' ');
+	return true;
+}
+
+int validateRequestLine(const std::string &line, size_t &firstSpace, size_t &lastSpace, bool endFound)
+{
+	// only move on if line is fully received or overly long
+	if (!endFound && line.size() <= MAX_REQUEST_LINE_SIZE)
+			return NeedMoreData;
+
+	if (hasInvalidChar(line, std::string("\n\0", 2)))
+		return BadRequest;
+	if (endFound && hasInvalidChar(line, "\r"))
+		return BadRequest;
+
+	size_t spaceCount;
+	if (!locateSpaces(line, firstSpace, lastSpace, spaceCount, endFound))
+		return endFound ? BadRequest : NeedMoreData;
+	if (spaceCount > 2)
+		return BadRequest;
+
+	if (int result = validateMethod(line.substr(0, firstSpace)))
+		return result;
+
+	if (int result = validateURI(firstSpace, lastSpace))
+		return result;
+
+	if (spaceCount == 1)
+		return endFound ? BadRequest : NeedMoreData;
+
+	return validateVersion(line.substr(lastSpace + 1), endFound);
+}

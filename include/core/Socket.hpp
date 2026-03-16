@@ -17,7 +17,7 @@ private:
 	// Non-copyable
 	Socket(const Socket&);
 	// Non-assignable
-	Socket& operator=(const Socket&);
+	Socket &operator=(const Socket&);
 
 	void configureSocket();
 
