@@ -1,67 +1,115 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Configure Git Remotes",
-            "type": "shell",
-            "windows": {
-                "command": "powershell",
-                "options": {
-                    "shell": {
-                        "executable": "${env:WINDIR}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-                        "args": [
-                            "-NoProfile",
-                            "-ExecutionPolicy",
-                            "Bypass",
-                            "-Command"
-                        ]
-                    }
-                },
-                "args": [
-                    "if (-not (Test-Path '${workspaceFolder}/.git/setup_done')) { & '${workspaceFolder}/.vscode/scripts/setup_git.ps1' }"
-                ]
-            },
-            "linux": {
-                "command": "sh",
-                "args": [
-                    "-c",
-                    "if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then sh '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
-                ]
-            },
-            "osx": {
-                "command": "sh",
-                "args": [
-                    "-c",
-                    "if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then sh '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
-                ]
-            },
-            "runOptions": {
-                "runOn": "folderOpen"
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "silent",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false,
-                "close": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Git Pull",
-            "type": "shell",
-            "command": "git pull",
-            "runOptions": {
-                "runOn": "folderOpen"
-            },
-            "presentation": {
-                "reveal": "silent",
-                "panel": "shared",
-                "close": true
-            },
-            "problemMatcher": []
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Configure Git Remotes",
+			"type": "shell",
+			"windows": {
+				"command": "powershell",
+				"options": {
+					"shell": {
+						"executable": "${env:WINDIR}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+						"args": [
+							"-NoProfile",
+							"-ExecutionPolicy",
+							"Bypass",
+							"-Command"
+						]
+					}
+				},
+				"args": [
+					"if (-not (Test-Path '${workspaceFolder}/.git/setup_done')) { & '${workspaceFolder}/.vscode/scripts/setup_git.ps1' }"
+				]
+			},
+			"linux": {
+				"command": "sh",
+				"args": [
+					"-c",
+					"if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then sh '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
+				]
+			},
+			"osx": {
+				"command": "sh",
+				"args": [
+					"-c",
+					"if [ ! -f '${workspaceFolder}/.git/setup_done' ]; then sh '${workspaceFolder}/.vscode/scripts/setup_git.sh'; fi"
+				]
+			},
+			"runOptions": {
+				"runOn": "folderOpen"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false,
+				"close": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Git Pull",
+			"type": "shell",
+			"command": "git pull",
+			"runOptions": {
+				"runOn": "folderOpen"
+			},
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared",
+				"close": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Generate .clangd",
+			"type": "shell",
+			"windows": {
+				"command": "powershell",
+				"options": {
+					"shell": {
+						"executable": "${env:WINDIR}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+						"args": [
+							"-NoProfile",
+							"-ExecutionPolicy",
+							"Bypass",
+							"-Command"
+						]
+					}
+				},
+				"args": [
+					"Set-Content -Path '${workspaceFolder}\\.clangd' -Value \"CompileFlags:`r`n  Add:`r`n    - `\"-I${workspaceFolder}/include`\"`r`n    - `\"-std=c++98`\"\""
+				]
+			},
+			"linux": {
+				"command": "sh",
+				"args": [
+					"-c",
+					"printf \"CompileFlags:\\n  Add:\\n    - \"-I${workspaceFolder}/include\"\\n    - \"-std=c++98\"\\n\" > \"${workspaceFolder}/.clangd\""
+				]
+			},
+			"osx": {
+				"command": "sh",
+				"args": [
+					"-c",
+					"printf \"CompileFlags:\\n  Add:\\n    - \"-I${workspaceFolder}/include\"\\n    - \"-std=c++98\"\\n    - \"--target=x86_64-apple-macosx\"\\n\"  > \"${workspaceFolder}/.clangd\""
+				]
+			},
+			"runOptions": {
+				"runOn": "folderOpen"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false,
+				"close": true
+			},
+			"problemMatcher": []
+		}
+	]
 }

@@ -1,5 +1,0 @@
-CompileFlags:
-  Add:
-    - "-I/Users/isel-mou/webserv/include"
-    - "-std=c++98"
-    - "--target=x86_64-apple-macosx"

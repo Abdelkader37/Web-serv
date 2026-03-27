@@ -15,3 +15,6 @@ $RECYCLE.BIN/
 *.tmp
 test*
 a.out
+
+# language server config
+.clangd
