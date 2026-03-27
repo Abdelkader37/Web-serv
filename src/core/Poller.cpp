@@ -1,6 +1,6 @@
 #include "core/Poller.hpp"			// Poller
 
-#define NOT_VALID(fd) ((fd) == -1 || (size_t)(fd) >= fd_to_index_.size() || fd_to_index_[(fd)] == -1)
+#define VALID(fd) ((fd) != -1 && (size_t)(fd) < fd_to_index_.size() && fd_to_index_[(fd)] != -1)
 
 Poller::Poller() : fd_to_index_(10240, -1) {}
 
@@ -13,9 +13,9 @@ void Poller::add(int fd, int events, FdContext fdContext)
 		fd_to_index_.resize(fd + 1, -1);
 
 	struct pollfd pfd;
-	pfd.fd      = fd;
-	pfd.events  = events;
-	pfd.revents = 0;
+	pfd.fd		= fd;
+	pfd.events	= events;
+	pfd.revents	= 0;
 
 	pfds_.push_back(pfd);
 	fdContexts_.push_back(fdContext);
@@ -25,7 +25,7 @@ void Poller::add(int fd, int events, FdContext fdContext)
 
 void Poller::mod(int fd, int events)
 {
-	if (NOT_VALID(fd))
+	if (!VALID(fd))
 		return;
 
 	pfds_[fd_to_index_[fd]].events = events;
@@ -33,10 +33,10 @@ void Poller::mod(int fd, int events)
 
 void Poller::remove(int fd)
 {
-	if (NOT_VALID(fd))
+	if (!VALID(fd))
 		return;
 
-	const int idx     = fd_to_index_[fd];
+	const int idx = fd_to_index_[fd];
 
 	if (idx != (int)pfds_.size() - 1)
 	{
