@@ -2,17 +2,44 @@
 
 #include "config/VirtualHost.hpp"	// VirtualHost
 
-#include <string>					// std::string
-#include <vector>					// std::vector
+#include <string>					// string
+#include <vector>					// vector
+#include <fstream>					// ifstream
 
 class Config
 {
 
 public:
 
-	const std::vector<VirtualHost>	&parse(const std::string &filepath);
+struct Token
+{
+
+enum TokenType
+{
+
+	DirectiveWord,
+	DirectiveDelimiter,
+	BlockOpen,
+	BlockClose
+
+};
+	Token() : type(DirectiveWord) {};
+	Token(const std::string &inputContent, TokenType inputType) : content(inputContent), type(inputType) { };
+
+	std::string	content;
+	TokenType	type;
+
+};
+
+const std::vector<VirtualHost>	&parse(const std::string &filepath);
 
 private:
 
-	std::vector<VirtualHost> virtualHosts_;
+	void	parseServerBlock(size_t &cursor);
+
+	void	tokenize(std::ifstream &configIfs);
+
+	std::vector<Token>			tokens_;
+	std::vector<VirtualHost>	virtualHosts_;
+
 };

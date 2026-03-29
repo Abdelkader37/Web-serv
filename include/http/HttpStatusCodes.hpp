@@ -28,8 +28,8 @@ enum Code
 	NotFound                    = 404,
 	MethodNotAllowed            = 405,
 	ContentTooLarge             = 413,
-	IamATeapot                  = 418,
 	URITooLong                  = 414,
+	IamATeapot                  = 418,
 	RequestHeaderFieldsTooLarge = 431,
 
 	/*####### 5xx - Server Error #######*/

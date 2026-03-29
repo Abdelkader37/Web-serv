@@ -2,10 +2,14 @@
 
 #include "http/HttpStatusCodes.hpp"	// HttpStatus::Code
 
-#include <cstddef>
+#include <cstddef>					// size_t
 #include <string>					// std::string
 #include <vector>					// std::vector
 #include <map>						// std::map
+
+#define InstallDir "/usr/local/webserv"
+
+#define HtmlDir InstallDir "/html"
 
 class Route
 {
@@ -21,9 +25,9 @@ public:
 	bool										redirected() const;
 	const std::string							&redirectPage() const;
 	HttpStatus::Code							redirectCode() const;
-	bool										autoindexed() const;
+	bool										autoIndexed() const;
 	const std::string							&indexFile() const;
-	const std::map<std::string, std::string>	&cgiExt() const;
+	const std::map<std::string, std::string>	&cgis() const;
 	const std::string							&uploadDir() const;
 
 private:
@@ -37,7 +41,7 @@ private:
 	HttpStatus::Code					redirectCode_;
 	bool								autoindex_;
 	std::string							indexFile_;
-	std::map<std::string, std::string>	cgiExt_;
+	std::map<std::string, std::string>	cgis_;
 	std::string							uploadDir_;
 
 };

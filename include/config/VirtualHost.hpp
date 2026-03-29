@@ -25,6 +25,7 @@ public:
 private:
 
 	std::vector<std::pair<std::string, std::string> >	binds_;
+	std::string											name_;
 	std::map<statusCode, std::string>					errorPages_;
 	std::vector<Route>									routes_;
 
