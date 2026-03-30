@@ -1,6 +1,9 @@
-#include "config/Config.hpp"		// Config, parse, tokenize
+#include "config/Config.hpp"		// Config, parse, parseServerBlock, tokenize
+#include "utils/NetworkUtils.hpp"	// resolve
+
 #include <cstdio>					// EOF
 #include <limits>					// numeric_limits
+#include <stdexcept>				// runtime_error
 
 #define DefaultConfig InstallDir "/conf/webserv.conf"
 
@@ -32,13 +35,29 @@ void Config::tokenize(std::ifstream &configIfs)
 	}
 }
 
-void Config::parseServerBlock(size_t &cursor)
+void Config::parseServerBlock(size_t &i)
 {
-	if (tokens_.at(cursor).content != "server" || tokens_.at(++cursor).type != Token::BlockOpen)
-		throw "Unexpected token in config file";
-	if (tokens_.at(cursor).content == "listen")
+	if (tokens_.at(i).content != "server" || tokens_.at(i + 1).type != Token::BlockOpen)
+		throw std::runtime_error("Unexpected token in config file");
+
+	i += 2;
+	VirtualHost host;
+	while (tokens_.at(i).type != Token::BlockClose)
 	{
-		
+		if (tokens_.at(i).content == "listen")
+		{
+			if (tokens_.at(i + 1).type == Token::DirectiveDelimiter
+				|| tokens_.at(i + 2).type == Token::DirectiveDelimiter
+				|| tokens_.at(i + 3).type != Token::DirectiveDelimiter)
+				throw std::runtime_error("Unexpected end of directive");
+			std::string &address = tokens_.at(i + 1).content;
+			std::string &port = tokens_.at(i + 2).content;
+			if (NetworkUtils::resolve(address, port))
+				host.addBind(address, port);
+			else
+				throw std::runtime_error("Invalid listen directive");
+			i += 4;
+		}
 	}
 }
 
@@ -50,9 +69,9 @@ const std::vector<VirtualHost> &Config::parse(const std::string &filePath)
 	else
 		configIfs.open(filePath);
 	if (!configIfs)
-		throw "Failed to open config file";
+		throw std::runtime_error("Failed to open config file");
 	tokenize(configIfs);
-	for (size_t cursor = 0; cursor < tokens_.size(); ++cursor)
-		parseServerBlock(cursor);
+	for (size_t i = 0; i < tokens_.size(); ++i)
+		parseServerBlock(i);
 	return virtualHosts_;
 }

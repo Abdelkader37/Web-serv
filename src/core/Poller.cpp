@@ -72,7 +72,7 @@ void Poller::remove(Pipe &pipe)
 // invoker: pointer to the object calling waitAndDispatch (this pointer in the caller)
 void Poller::waitAndDispatch(int timeout_ms, void (*dispatcher)(FdContext fdContext, int revents, void *invoker), Invoker invoker)
 {
-	if (pfds_.empty() || poll(&pfds_[0], pfds_.size(), timeout_ms) <= 0)
+	if (pfds_.empty() || poll(pfds_.data(), pfds_.size(), timeout_ms) <= 0)
 		return;
 
 	ready_fdContexts_.clear();

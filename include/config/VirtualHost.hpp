@@ -17,6 +17,8 @@ public:
 
 	VirtualHost();
 
+	void addBind(const std::string &address, const std::string &port);
+
 	const std::vector<std::pair<std::string, std::string> >	&binds() const;
 	const std::string										&name() const;
 	const std::map<statusCode, std::string>					&errorPages() const;

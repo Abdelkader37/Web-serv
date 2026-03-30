@@ -1,6 +1,7 @@
 #include "config/VirtualHost.hpp"	// VirtualHost
 #include "http/HttpStatusCodes.hpp"	// HttpStatus::Code
 #include <string>
+#include <utility>
 
 VirtualHost::VirtualHost() : name_("default"), binds_(1, std::make_pair("127.0.0.1", "80")), routes_(1, Route())
 {
@@ -16,6 +17,11 @@ VirtualHost::VirtualHost() : name_("default"), binds_(1, std::make_pair("127.0.0
 	errorPages_.insert(std::make_pair(HttpStatus::NotImplemented,					HtmlDir "/501.html"));
 	errorPages_.insert(std::make_pair(HttpStatus::GatewayTimeout,					HtmlDir "/504.html"));
 	errorPages_.insert(std::make_pair(HttpStatus::HTTPVersionNotSupported,		HtmlDir "/505.html"));
+}
+
+void VirtualHost::addBind(const std::string &address, const std::string &port)
+{
+	binds_.push_back(std::make_pair(address, port));
 }
 
 const std::vector<std::pair<std::string, std::string> >	&VirtualHost::binds()		const { return binds_; }
