@@ -3,12 +3,15 @@
 #include "core/Socket.hpp"			// Socket
 #include "core/Pipe.hpp"			// Pipe
 
-#include <vector>					// std::vector
+#include <vector>					// vector
 #include <poll.h>					// struct pollfd
+
+
 
 // for readability
 typedef void* FdContext;
 typedef void* Invoker;
+
 
 class Poller
 {
@@ -40,9 +43,9 @@ private:
 	void mod(int fd, int events);
 	void remove(int fd);
 
-	std::vector<struct pollfd>	pfds_;        // passed directly to poll()
-	std::vector<FdContext>		fdContexts_;  // parallel to pfds_
-	std::vector<int>			fd_to_index_; // fd_to_index_[fd] → index in pfds_ and fdContexts_
+	std::vector<struct pollfd>	pfds_;			// passed directly to poll()
+	std::vector<FdContext>		fdContexts_;	// parallel to pfds_
+	std::vector<int>			fd_to_index_;	// fd_to_index_[fd] → index in pfds_ and fdContexts_
 
 	// temporary storage for dispatch
 	std::vector<FdContext>	ready_fdContexts_;

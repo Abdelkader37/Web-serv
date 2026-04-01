@@ -2,11 +2,7 @@
 #include "http/HttpStatusCodes.hpp"	// BadRequest, NeedMoreData, RequestHeaderFieldsTooLarge
 #include "utils/StringUtils.hpp"	// toLower, trim, hasInvalidChar
 
-#include <string>					// std::string, std::isdigit
-#include <map>						// std::map
-#include <cstdlib>					// std::strtoul
-
-#define VALID 0
+#include <cstdlib>					// size_t, strtoul
 
 using namespace HttpStatus;
 using namespace StringUtils;
@@ -18,7 +14,7 @@ static bool isValidHeaderFieldName(const std::string &name)
 		return false;
 	for (size_t i = 0; i < name.size(); i++)
 	{
-		unsigned char c = name[i];
+		unsigned char c = name.at(i);
 		if (!std::isalnum(c) && allowedSpecials.find(c) == std::string::npos)
 			return false;
 	}
@@ -29,7 +25,7 @@ static bool isValidHeaderFieldValue(const std::string &value)
 {
 	for (size_t i = 0; i < value.size(); ++i)
 	{
-		unsigned char c = value[i];
+		unsigned char c = value.at(i);
 		if (c == 0x7f || (c <= 0x1f && c != '\t'))
 			return false;
 	}
@@ -56,7 +52,7 @@ static bool isChunkedEncoding(const std::string &transferEncoding)
 static int validateHeaderFieldsFormat(const std::string &rawHeaderFields)
 {
 	for (size_t pos = 0; (pos = rawHeaderFields.find('\n', pos)) != std::string::npos; ++pos)
-		if (pos == 0 || rawHeaderFields[pos - 1] != '\r')
+		if (pos == 0 || rawHeaderFields.at(pos - 1) != '\r')
 			return BadRequest;
 
 	if (rawHeaderFields.size() > MAX_HEADER_SIZE)
@@ -84,6 +80,11 @@ static int parseHeaderField(const std::string &line, bool &seenContentLength, st
 		seenContentLength = true;
 	}
 
+	else if (name == "host")
+		for (size_t i = 0; i < value.size(); ++i)
+			if (!std::isalnum(value.at(i)) && value.at(i) != '.' && value.at(i) != '-')
+				return BadRequest;
+
 	parsed[name] = value;
 	return VALID;
 }
@@ -101,7 +102,7 @@ static int resolveBodyEncoding(const std::string &version, size_t &contentLength
 		std::map<std::string, std::string>::const_iterator contentLengthIterator = parsed.find("content-length");
 		if (contentLengthIterator != parsed.end())
 		{
-			if (contentLengthIterator->second.empty() || !std::isdigit((unsigned char)contentLengthIterator->second[0]))
+			if (contentLengthIterator->second.empty() || !std::isdigit((unsigned char)contentLengthIterator->second.at(0)))
 				return BadRequest;
 
 			char *end;

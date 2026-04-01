@@ -1,6 +1,6 @@
 #include "core/Poller.hpp"			// Poller
 
-#define VALID(fd) ((fd) != -1 && (size_t)(fd) < fd_to_index_.size() && fd_to_index_[(fd)] != -1)
+#define VALID(fd) ((fd) != -1 && (size_t)(fd) < fd_to_index_.size() && fd_to_index_.at(fd) != -1)
 
 Poller::Poller() : fd_to_index_(10240, -1) {}
 
@@ -20,7 +20,7 @@ void Poller::add(int fd, int events, FdContext fdContext)
 	pfds_.push_back(pfd);
 	fdContexts_.push_back(fdContext);
 
-	fd_to_index_[fd] = pfds_.size() - 1;
+	fd_to_index_.at(fd) = pfds_.size() - 1;
 }
 
 void Poller::mod(int fd, int events)
@@ -28,7 +28,7 @@ void Poller::mod(int fd, int events)
 	if (!VALID(fd))
 		return;
 
-	pfds_[fd_to_index_[fd]].events = events;
+	pfds_.at(fd_to_index_.at(fd)).events = events;
 }
 
 void Poller::remove(int fd)
@@ -36,24 +36,24 @@ void Poller::remove(int fd)
 	if (!VALID(fd))
 		return;
 
-	const int idx = fd_to_index_[fd];
+	const int idx = fd_to_index_.at(fd);
 
 	if (idx != (int)pfds_.size() - 1)
 	{
 		const int last_fd		= pfds_.back().fd;
-		pfds_[idx]				= pfds_.back();
-		fdContexts_[idx]		= fdContexts_.back();
-		fd_to_index_[last_fd]	= idx;
+		pfds_.at(idx)				= pfds_.back();
+		fdContexts_.at(idx)		= fdContexts_.back();
+		fd_to_index_.at(last_fd)	= idx;
 	}
 
 	pfds_.pop_back();
 	fdContexts_.pop_back();
-	fd_to_index_[fd] = -1;
+	fd_to_index_.at(fd) = -1;
 }
 
-void Poller::add(Socket &socket, int events, FdContext fdContext) { add(socket.get(), events, fdContext); }
-void Poller::mod(Socket &socket, int events)              { mod(socket.get(), events); }
-void Poller::remove(Socket &socket)                       { remove(socket.get()); }
+void Poller::add(Socket &socket, int events, FdContext fdContext)	{ add(socket.get(), events, fdContext); }
+void Poller::mod(Socket &socket, int events)						{ mod(socket.get(), events); }
+void Poller::remove(Socket &socket)									{ remove(socket.get()); }
 
 void Poller::add(Pipe &pipe, int events, FdContext fdContext)
 {
@@ -72,18 +72,18 @@ void Poller::remove(Pipe &pipe)
 // invoker: pointer to the object calling waitAndDispatch (this pointer in the caller)
 void Poller::waitAndDispatch(int timeout_ms, void (*dispatcher)(FdContext fdContext, int revents, void *invoker), Invoker invoker)
 {
-	if (pfds_.empty() || poll(pfds_.data(), pfds_.size(), timeout_ms) <= 0)
+	if (pfds_.empty() || poll(&pfds_.at(0), pfds_.size(), timeout_ms) <= 0)
 		return;
 
 	ready_fdContexts_.clear();
 	ready_revents_.clear();
 	for (size_t i = 0; i < pfds_.size(); ++i)
-		if (pfds_[i].revents != 0)
+		if (pfds_.at(i).revents != 0)
 		{
-			ready_fdContexts_.push_back(fdContexts_[i]);
-			ready_revents_.push_back(pfds_[i].revents);
+			ready_fdContexts_.push_back(fdContexts_.at(i));
+			ready_revents_.push_back(pfds_.at(i).revents);
 		}
 
 	for (size_t i = 0; i < ready_fdContexts_.size(); ++i)
-		dispatcher(ready_fdContexts_[i], ready_revents_[i], invoker);
+		dispatcher(ready_fdContexts_.at(i), ready_revents_.at(i), invoker);
 }

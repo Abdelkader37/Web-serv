@@ -3,7 +3,7 @@
 
 #include <sys/socket.h>				// setsockopt, bind, listen, accept, SO_REUSEADDR, SOL_SOCKET, SOMAXCONN
 #include <netdb.h>					// getaddrinfo, freeaddrinfo, gai_strerror, addrinfo
-#include <stdexcept>				// std::runtime_error
+#include <stdexcept>				// runtime_error
 
 
 ListeningSocket::ListeningSocket(const std::string &bind_address, const std::string &bind_port) : Socket()

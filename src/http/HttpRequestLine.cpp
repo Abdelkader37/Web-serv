@@ -2,12 +2,8 @@
 #include "http/HttpStatusCodes.hpp"	// BadRequest, URITooLong, HTTPVersionNotSupported, NotImplemented, NeedMoreData
 #include "utils/StringUtils.hpp"	// isAllDigits
 
-#include <string>					// std::string
-#include <algorithm>				// std::count
-
-#define MAX_URI_SIZE (MAX_REQUEST_LINE_SIZE - 15)
-
-#define VALID 0
+#include <string>					// string
+#include <algorithm>				// count
 
 using namespace HttpStatus;
 using namespace StringUtils;
@@ -20,10 +16,10 @@ static bool isValidMethodChar(unsigned char c)
 	return std::isalnum(c) || allowedSpecials.find(c) != std::string::npos;
 }
 
-static bool isValidMethod(const std::string &s)
+static bool isValidMethod(const std::string &method)
 {
-	for (size_t i = 0; i < s.size(); i++)
-		if (!isValidMethodChar(s[i]))
+	for (size_t i = 0; i < method.size(); i++)
+		if (!isValidMethodChar(method.at(i)))
 			return false;
 	return true;
 }

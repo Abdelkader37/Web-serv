@@ -1,10 +1,17 @@
 #pragma once
 
-#include <string>					// std::string
-#include <map>						// std::map
 
-#define MAX_REQUEST_LINE_SIZE 8192  // 8KB
-#define MAX_HEADER_SIZE       16384 // 16KB
+
+
+#include <string>					// string
+#include <map>						// map
+
+
+
+#define MAX_REQUEST_LINE_SIZE	8192	// 8KB
+#define MAX_HEADER_SIZE			16384	// 16KB
+#define MAX_URI_SIZE			(MAX_REQUEST_LINE_SIZE - 15)
+#define VALID					0
 
 class HttpRequest
 {

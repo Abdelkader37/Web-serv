@@ -1,5 +1,18 @@
 #pragma once
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Socket
 {
 

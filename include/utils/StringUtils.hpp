@@ -1,6 +1,17 @@
 #pragma once
 
-#include <string>					// std::string
+
+
+
+#include <string>					// string
+
+
+
+
+
+
+
+
 
 namespace StringUtils
 {

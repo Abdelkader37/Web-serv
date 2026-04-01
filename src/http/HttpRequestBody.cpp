@@ -1,8 +1,8 @@
 #include "http/HttpStatusCodes.hpp"	// BadRequest, ContentTooLarge
 
-#include <string>					// std::string
-#include <cstdlib>					// std::strtoul
-#include <algorithm>				// std::min
+#include <string>					// string
+#include <cstdlib>					// strtoul
+#include <algorithm>				// min
 
 using namespace HttpStatus;
 

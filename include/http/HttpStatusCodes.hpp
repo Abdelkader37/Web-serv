@@ -1,6 +1,17 @@
 #pragma once
 
-#include <string>					// std::string
+
+
+
+#include <string>					// string
+
+
+
+
+
+
+
+
 
 namespace HttpStatus
 {
@@ -65,6 +76,26 @@ inline std::string reasonPhrase(int code)
 	case 505: return "HTTP Version Not Supported";
 	default:  return std::string();
 	}
+}
+// Not protected, validate input before use
+inline Code toCode(const std::string &code)
+{
+	return static_cast<Code>((code[0] - '0') * 100 + (code[1] - '0') * 10 + (code[2] - '0'));
+}
+
+inline bool isRedirectCode(Code code)
+{
+	switch (code)
+	{
+	case 301: case 302: case 303: case 307: case 308:
+		return true;
+	default:
+		return false;
+	}
+}
+inline bool isRedirectCode(const std::string &code)
+{
+	return code == "301" || code == "302" || code == "303" || code == "307" || code == "308";
 }
 
 } // namespace HttpStatus

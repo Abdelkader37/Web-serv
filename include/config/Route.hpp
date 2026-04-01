@@ -2,14 +2,16 @@
 
 #include "http/HttpStatusCodes.hpp"	// HttpStatus::Code
 
+
 #include <cstddef>					// size_t
-#include <string>					// std::string
-#include <vector>					// std::vector
-#include <map>						// std::map
+#include <string>					// string
+#include <vector>					// vector
+#include <map>						// map
 
 #define InstallDir "/usr/local/webserv"
-
 #define HtmlDir InstallDir "/html"
+
+
 
 class Route
 {
@@ -17,6 +19,7 @@ class Route
 public:
 
 	Route();
+	Route(const std::string &path);
 
 	const std::string							&path() const;
 	size_t										maxBodySize() const;
@@ -28,7 +31,17 @@ public:
 	bool										autoIndexed() const;
 	const std::string							&indexFile() const;
 	const std::map<std::string, std::string>	&cgis() const;
-	const std::string							&uploadDir() const;
+	const std::string							&upload() const;
+
+	void	setPath(const std::string &path);
+	void	setMaxBodySize(size_t maxBodySize);
+	void	addMethod(const std::string &method);
+	void	setRoot(const std::string &root);
+	void	setRedirect(const std::string &statusCode, const std::string &page);
+	void	setAutoIndex(bool autoindex);
+	void	setIndexFile(const std::string &indexFile);
+	void	addCgi(const std::string &extension, const std::string &path);
+	void	setUpload(const std::string &upload);
 
 private:
 
@@ -42,6 +55,6 @@ private:
 	bool								autoindex_;
 	std::string							indexFile_;
 	std::map<std::string, std::string>	cgis_;
-	std::string							uploadDir_;
+	std::string							upload_;
 
 };

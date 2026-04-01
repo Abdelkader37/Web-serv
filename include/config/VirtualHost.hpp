@@ -2,13 +2,16 @@
 
 #include "config/Route.hpp"			// Route
 
-#include <string>					// std::string
-#include <vector>					// std::vector
-#include <utility>					// std::pair
-#include <map>						// std::map
+
+#include <string>					// string
+#include <vector>					// vector
+#include <utility>					// pair
+#include <map>						// map
 
 // for readability
 typedef int statusCode;
+
+
 
 class VirtualHost
 {
@@ -18,7 +21,12 @@ public:
 	VirtualHost();
 
 	void addBind(const std::string &address, const std::string &port);
+	void setName(const std::string &name);
+	
 
+
+	void addRoute(Route &route);
+	
 	const std::vector<std::pair<std::string, std::string> >	&binds() const;
 	const std::string										&name() const;
 	const std::map<statusCode, std::string>					&errorPages() const;

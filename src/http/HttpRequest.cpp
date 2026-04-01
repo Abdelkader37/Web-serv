@@ -1,9 +1,9 @@
 #include "http/HttpRequest.hpp"		// HttpRequest
 #include "http/HttpStatusCodes.hpp"	// BadRequest, ContentTooLarge
 
-#include <string>					// std::string
-#include <map>						// std::map
-#include <cstdlib>					// std::strtoul
+#include <string>					// string
+#include <map>						// map
+#include <cstdlib>					// strtoul
 
 using namespace HttpStatus;
 

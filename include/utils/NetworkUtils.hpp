@@ -1,7 +1,17 @@
 #pragma once
 
-#include <string>					// std::string
+
+
+
+#include <string>					// string
 #include <netdb.h>					// addrinfo
+
+
+
+
+
+
+
 
 namespace NetworkUtils
 {
