@@ -8,8 +8,8 @@
 #include <utility>					// pair
 #include <map>						// map
 
-// for readability
-typedef int statusCode;
+
+
 
 
 
@@ -21,6 +21,7 @@ public:
 	VirtualHost();
 
 	void addBind(const std::string &address, const std::string &port);
+	void addErrorPage(const std::string &code, const std::string &page);
 	void setName(const std::string &name);
 	
 
@@ -29,14 +30,14 @@ public:
 	
 	const std::vector<std::pair<std::string, std::string> >	&binds() const;
 	const std::string										&name() const;
-	const std::map<statusCode, std::string>					&errorPages() const;
+	const std::map<HttpStatus::Code, std::string>			&errorPages() const;
 	const std::vector<Route>								&routes() const;
 
 private:
 
 	std::vector<std::pair<std::string, std::string> >	binds_;
 	std::string											name_;
-	std::map<statusCode, std::string>					errorPages_;
+	std::map<HttpStatus::Code, std::string>				errorPages_;
 	std::vector<Route>									routes_;
 
 };

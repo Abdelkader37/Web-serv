@@ -21,9 +21,10 @@ std::string StringUtils::trim(const std::string &s)
 
 bool StringUtils::isAllDigits(const std::string &s, size_t start, size_t end)
 {
-	if (start >= end)
+	size_t realEnd = (end == std::string::npos) ? s.size() : end;
+	if (start >= realEnd)
 		return false;
-	for (size_t i = start; i < end; i++)
+	for (size_t i = start; i < realEnd; i++)
 		if (!std::isdigit((unsigned char)s.at(i)))
 			return false;
 	return true;

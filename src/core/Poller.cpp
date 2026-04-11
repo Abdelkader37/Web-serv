@@ -7,7 +7,7 @@ Poller::Poller() : fd_to_index_(10240, -1) {}
 void Poller::add(int fd, int events, FdContext fdContext)
 {
 	if (fd == -1 || events == 0)
-		return;
+		return ;
 
 	if ((size_t)fd >= fd_to_index_.size())
 		fd_to_index_.resize(fd + 1, -1);
@@ -26,7 +26,7 @@ void Poller::add(int fd, int events, FdContext fdContext)
 void Poller::mod(int fd, int events)
 {
 	if (!VALID(fd))
-		return;
+		return ;
 
 	pfds_.at(fd_to_index_.at(fd)).events = events;
 }
@@ -34,7 +34,7 @@ void Poller::mod(int fd, int events)
 void Poller::remove(int fd)
 {
 	if (!VALID(fd))
-		return;
+		return ;
 
 	const int idx = fd_to_index_.at(fd);
 
@@ -73,7 +73,7 @@ void Poller::remove(Pipe &pipe)
 void Poller::waitAndDispatch(int timeout_ms, void (*dispatcher)(FdContext fdContext, int revents, void *invoker), Invoker invoker)
 {
 	if (pfds_.empty() || poll(&pfds_.at(0), pfds_.size(), timeout_ms) <= 0)
-		return;
+		return ;
 
 	ready_fdContexts_.clear();
 	ready_revents_.clear();

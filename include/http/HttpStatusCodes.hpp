@@ -77,25 +77,12 @@ inline std::string reasonPhrase(int code)
 	default:  return std::string();
 	}
 }
-// Not protected, validate input before use
-inline Code toCode(const std::string &code)
-{
-	return static_cast<Code>((code[0] - '0') * 100 + (code[1] - '0') * 10 + (code[2] - '0'));
-}
+inline bool isRedirectCode(Code code) { return code == 301 || code == 302 || code == 303 || code == 307 || code == 308; }
+inline bool isRedirectCode(const std::string &code) { return code == "301" || code == "302" || code == "303" || code == "307" || code == "308"; }
+inline bool isErrorCode(Code code) { return code == 400 || code == 403 || code == 404 || code == 405 || code == 413 || code == 414 || code == 418 || code == 431 || code == 500 || code == 501 || code == 504 || code == 505; }
+inline bool isErrorCode(const std::string &code) { return code == "400" || code == "403" || code == "404" || code == "405" || code == "413" || code == "414" || code == "418" || code == "431" || code == "500" || code == "501" || code == "504" || code == "505"; }
 
-inline bool isRedirectCode(Code code)
-{
-	switch (code)
-	{
-	case 301: case 302: case 303: case 307: case 308:
-		return true;
-	default:
-		return false;
-	}
-}
-inline bool isRedirectCode(const std::string &code)
-{
-	return code == "301" || code == "302" || code == "303" || code == "307" || code == "308";
-}
+// Not protected, validate input before use
+inline Code toCode(const std::string &code) { return static_cast<Code>((code[0] - '0') * 100 + (code[1] - '0') * 10 + (code[2] - '0')); }
 
 } // namespace HttpStatus

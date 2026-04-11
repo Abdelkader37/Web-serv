@@ -36,9 +36,16 @@ void VirtualHost::setName(const std::string &name)
 	name_ = StringUtils::toLower(name);
 }
 
+void VirtualHost::addErrorPage(const std::string &code, const std::string &page)
+{
+	if (!HttpStatus::isErrorCode(code))
+		throw std::runtime_error("Invalid error code");
+	errorPages_[HttpStatus::toCode(code)] = page;
+}
+
 void VirtualHost::addRoute(Route &route) { routes_.push_back(route); }
 
 const std::vector<std::pair<std::string, std::string> >	&VirtualHost::binds()		const { return binds_; }
 const std::string										&VirtualHost::name()		const { return name_; }
-const std::map<statusCode, std::string>					&VirtualHost::errorPages()	const { return errorPages_; }
+const std::map<HttpStatus::Code, std::string>			&VirtualHost::errorPages()	const { return errorPages_; }
 const std::vector<Route>								&VirtualHost::routes()		const { return routes_; }

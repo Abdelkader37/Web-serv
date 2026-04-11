@@ -91,16 +91,16 @@ void HttpRequest::parseBody()
 void HttpRequest::parse(const std::string &rawBytes)
 {
 	if (complete_ || errorCode_)
-		return;
+		return ;
 
 	rawBuffer_ += rawBytes;
 	if (!headerParsed_)
 	{
 		if (!parseRequestLine())
-			return;
+			return ;
 		cleanBuffer();
 		if (!parseHeaders())
-			return;
+			return ;
 		cleanBuffer();
 	}
 	parseBody();
@@ -109,7 +109,7 @@ void HttpRequest::parse(const std::string &rawBytes)
 void HttpRequest::cleanBuffer()
 {
 	if (bytesParsed_ == 0)
-		return;
+		return ;
 	rawBuffer_.erase(0, bytesParsed_);
 	bytesParsed_ = 0;
 }
