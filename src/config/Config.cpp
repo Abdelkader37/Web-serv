@@ -5,7 +5,8 @@
 #include <limits>					// numeric_limits
 #include <stdexcept>				// runtime_error
 
-typedef void (Config::*RouteDirectiveHandler)(Route &);
+typedef void (Config::*LocationDirectiveHandler)(Route &);
+typedef void (Config::*ServerDirectiveHandler)(VirtualHost &, Route &);
 
 void Config::tokenize(std::ifstream &configIfs)
 {
@@ -65,7 +66,7 @@ void Config::parseServerBlock()
 			tokenStream_.expect(TokenStream::Token::DirectiveWord);
 			tokenStream_.skipBlock();
 		}
-		else if (!parseServerDirective(virtualHost, defaults) && !parseSharedDirective(defaults))
+		else if (!parseServerDirective(virtualHost, defaults) && !parseLocationDirective(defaults))
 			throw std::runtime_error("Unknown directive in server block: " + tokenStream_.peek().content);
 	}
 	tokenStream_.setPosition(serverBlockStart);
@@ -87,7 +88,7 @@ void Config::parseLocationBlock(VirtualHost &virtualHost, Route &defaults)
 	tokenStream_.expect(TokenStream::Token::BlockOpen);
 
 	while (!tokenStream_.accept(TokenStream::Token::BlockClose))
-		if (!parseLocationDirective(route) && !parseSharedDirective(route))
+		if (!parseLocationDirective(route))
 			throw std::runtime_error("Unknown directive in location block: " + tokenStream_.peek().content);
 
 	if (route.redirected()
@@ -104,43 +105,37 @@ void Config::parseLocationBlock(VirtualHost &virtualHost, Route &defaults)
 
 bool Config::parseServerDirective(VirtualHost &virtualHost, Route &defaults)
 {
-	if (tokenStream_.accept("listen"))
+	static std::map<std::string, ServerDirectiveHandler> handlers;
+	if (handlers.empty())
 	{
-		virtualHost.addBind(
-			tokenStream_.expect(TokenStream::Token::DirectiveWord),
-			tokenStream_.expect(TokenStream::Token::DirectiveWord)
-		);
-		tokenStream_.expect(TokenStream::Token::DirectiveDelimiter);
+		handlers["listen"]		= &Config::parseListen;
+		handlers["serverName"]	= &Config::parseServerName;
+		handlers["errorPage"]	= &Config::parseServerErrorPage;
 	}
-	else if (tokenStream_.accept("serverName"))
-	{
-		virtualHost.setName(tokenStream_.expect(TokenStream::Token::DirectiveWord));
-		tokenStream_.expect(TokenStream::Token::DirectiveDelimiter);
-	}
-	else if (tokenStream_.accept("errorPage"))
-	{
-		const std::string &code = tokenStream_.expect(TokenStream::Token::DirectiveWord);
-		const std::string &page = tokenStream_.expect(TokenStream::Token::DirectiveWord);
-		tokenStream_.expect(TokenStream::Token::DirectiveDelimiter);
-		virtualHost.addErrorPage(code, page);
-		defaults.addErrorPage(code, page);
-	}
-	else
+	std::map<std::string, ServerDirectiveHandler>::const_iterator handler = handlers.find(tokenStream_.peek().content);
+	if (handler == handlers.end())
 		return false;
+	tokenStream_.expect(TokenStream::Token::DirectiveWord);
+	(this->*handler->second)(virtualHost, defaults);
 	return true;
 }
 
 bool Config::parseLocationDirective(Route &route)
 {
-	static std::map<std::string, RouteDirectiveHandler> handlers;
+	static std::map<std::string, LocationDirectiveHandler> handlers;
 	if (handlers.empty())
 	{
-		handlers["cgi"]			= &Config::parseCgi;
-		handlers["upload"]		= &Config::parseUpload;
-		handlers["redirect"]	= &Config::parseRedirect;
-		handlers["errorPage"]	= &Config::parseErrorPage;
+		handlers["cgi"]					= &Config::parseCgi;
+		handlers["upload"]				= &Config::parseUpload;
+		handlers["redirect"]			= &Config::parseRedirect;
+		handlers["errorPage"]			= &Config::parseLocationErrorPage;
+		handlers["root"]				= &Config::parseRoot;
+		handlers["index"]				= &Config::parseIndex;
+		handlers["autoIndex"]			= &Config::parseAutoIndex;
+		handlers["clientMaxBodySize"]	= &Config::parseMaxBodySize;
+		handlers["methods"]				= &Config::parseMethods;
 	}
-	std::map<std::string, RouteDirectiveHandler>::const_iterator handler = handlers.find(tokenStream_.peek().content);
+	std::map<std::string, LocationDirectiveHandler>::const_iterator handler = handlers.find(tokenStream_.peek().content);
 	if (handler == handlers.end())
 		return false;
 	tokenStream_.expect(TokenStream::Token::DirectiveWord);
@@ -148,71 +143,66 @@ bool Config::parseLocationDirective(Route &route)
 	return true;
 }
 
-bool Config::parseSharedDirective(Route &route)
+void Config::parseServerErrorPage(VirtualHost &virtualHost, Route &defaults)
 {
-	static std::map<std::string, RouteDirectiveHandler> handlers;
-	if (handlers.empty())
-	{
-		handlers["root"]              = &Config::parseRoot;
-		handlers["index"]             = &Config::parseIndex;
-		handlers["autoIndex"]         = &Config::parseAutoIndex;
-		handlers["clientMaxBodySize"] = &Config::parseMaxBodySize;
-		handlers["methods"]           = &Config::parseMethods;
-	}
-	std::map<std::string, RouteDirectiveHandler>::const_iterator handler = handlers.find(tokenStream_.peek().content);
-	if (handler == handlers.end())
-		return false;
-	tokenStream_.expect(TokenStream::Token::DirectiveWord);
-	(this->*handler->second)(route);
-	return true;
+	const std::string &code = tokenStream_.expect(TokenStream::Token::DirectiveWord);
+	const std::string &page = tokenStream_.expect(TokenStream::Token::DirectiveWord);
+	tokenStream_.expect(TokenStream::Token::DirectiveDelimiter);
+	virtualHost.addErrorPage(code, page);
+	defaults.addErrorPage(code, page);
 }
 
-void Config::parseCgi(Route &route)			{ route.addCgi(tokenStream_.expect(TokenStream::Token::DirectiveWord), tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
-void Config::parseUpload(Route &route)		{ route.setUpload(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
-void Config::parseRedirect(Route &route)	{ route.setRedirect(tokenStream_.expect(TokenStream::Token::DirectiveWord), tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
-void Config::parseErrorPage(Route &route)	{ route.addErrorPage(tokenStream_.expect(TokenStream::Token::DirectiveWord), tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
-void Config::parseRoot(Route &route)		{ route.setRoot(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
-void Config::parseAutoIndex(Route &route)	{ route.setAutoIndex(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
-void Config::parseMaxBodySize(Route &route)	{ route.setMaxBodySize(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
-void Config::parseMethods(Route &route)		{ while (!tokenStream_.accept(TokenStream::Token::DirectiveDelimiter)) route.addMethod(tokenStream_.expect(TokenStream::Token::DirectiveWord)); }
-void Config::parseIndex(Route &route)		{ while (!tokenStream_.accept(TokenStream::Token::DirectiveDelimiter)) route.addIndexFile(tokenStream_.expect(TokenStream::Token::DirectiveWord)); }
-
-Config::TokenStream::Token::Token() : type(DirectiveWord) { }
-Config::TokenStream::Token::Token(const std::string &inputContent) : content(inputContent), type(DirectiveWord) { }
-Config::TokenStream::Token::Token(Type inputType) : type(inputType) { }
+void Config::parseListen(VirtualHost &virtualHost, Route &)				{ virtualHost.addBind(tokenStream_.expect(TokenStream::Token::DirectiveWord), tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseServerName(VirtualHost &virtualHost, Route &)			{ virtualHost.setName(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseCgi(Route &route)										{ route.addCgi(tokenStream_.expect(TokenStream::Token::DirectiveWord), tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseUpload(Route &route)									{ route.setUpload(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseRedirect(Route &route)								{ route.setRedirect(tokenStream_.expect(TokenStream::Token::DirectiveWord), tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseLocationErrorPage(Route &route)						{ route.addErrorPage(tokenStream_.expect(TokenStream::Token::DirectiveWord), tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseRoot(Route &route)									{ route.setRoot(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseAutoIndex(Route &route)								{ route.setAutoIndex(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseMaxBodySize(Route &route)								{ route.setMaxBodySize(tokenStream_.expect(TokenStream::Token::DirectiveWord)); tokenStream_.expect(TokenStream::Token::DirectiveDelimiter); }
+void Config::parseMethods(Route &route)									{ while (!tokenStream_.accept(TokenStream::Token::DirectiveDelimiter)) route.addMethod(tokenStream_.expect(TokenStream::Token::DirectiveWord)); }
+void Config::parseIndex(Route &route)									{ while (!tokenStream_.accept(TokenStream::Token::DirectiveDelimiter)) route.addIndexFile(tokenStream_.expect(TokenStream::Token::DirectiveWord)); }
 
 Config::TokenStream::TokenStream() : pos_(0) { }
 
 void Config::TokenStream::push(const Token &token)		{ tokens_.push_back(token); }
 void Config::TokenStream::push(const std::string &word)	{ tokens_.push_back(Token(word)); }
 void Config::TokenStream::push(Token::Type type)		{ tokens_.push_back(Token(type)); }
+
 bool Config::TokenStream::done() const					{ return pos_ >= tokens_.size(); }
 
 const Config::TokenStream::Token &Config::TokenStream::peek() const { if (done()) throw std::runtime_error("Unexpected end of file"); return tokens_.at(pos_); }
 
 const std::string &Config::TokenStream::expect(Token::Type type)
 {
-	if (done())								throw std::runtime_error("Unexpected end of file");
-	if (tokens_.at(pos_).type != type)	throw std::runtime_error("Unexpected token type");
+	if (done())
+		throw std::runtime_error("Unexpected end of file");
+	if (tokens_.at(pos_).type != type)
+		throw std::runtime_error("Unexpected token type");
 	return tokens_.at(pos_++).content;
 }
 
 void Config::TokenStream::expect(const std::string &value)
 {
-	if (done())									throw std::runtime_error("Unexpected end of file");
-	if (tokens_.at(pos_++).content != value)	throw std::runtime_error("Unexpected token: expected \"" + value + "\"");
+	if (done())
+		throw std::runtime_error("Unexpected end of file");
+	if (tokens_.at(pos_++).content != value)
+		throw std::runtime_error("Unexpected token: expected \"" + value + "\"");
 }
 
 bool Config::TokenStream::accept(Token::Type type)
 {
-	if (done() || tokens_.at(pos_).type != type)	return false;
+	if (done() || tokens_.at(pos_).type != type)
+		return false;
 	++pos_;
 	return true;
 }
 
 bool Config::TokenStream::accept(const std::string &value)
 {
-	if (done() || tokens_.at(pos_).content != value)	return false;
+	if (done() || tokens_.at(pos_).content != value)
+		return false;
 	++pos_;
 	return true;
 }
@@ -239,3 +229,7 @@ void Config::TokenStream::skipDirective()
 
 size_t Config::TokenStream::getPosition() const		{ return pos_; }
 void Config::TokenStream::setPosition(size_t pos)	{ pos_ = pos; }
+
+Config::TokenStream::Token::Token() : type(DirectiveWord) { }
+Config::TokenStream::Token::Token(const std::string &inputContent) : content(inputContent), type(DirectiveWord) { }
+Config::TokenStream::Token::Token(Type inputType) : type(inputType) { }

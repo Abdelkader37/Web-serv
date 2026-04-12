@@ -77,11 +77,14 @@ private:
 
 	void	tokenize(std::ifstream &configIfs);
 
-	// Directive Handlers
+	// Directive handlers
+	void parseListen(VirtualHost &virtualHost, Route &);
+	void parseServerName(VirtualHost &virtualHost, Route &);
+	void parseServerErrorPage(VirtualHost &virtualHost, Route &defaults);
 	void parseCgi(Route &route);
 	void parseUpload(Route &route);
 	void parseRedirect(Route &route);
-	void parseErrorPage(Route &route);
+	void parseLocationErrorPage(Route &route);
 	void parseRoot(Route &route);
 	void parseIndex(Route &route);
 	void parseAutoIndex(Route &route);
@@ -91,7 +94,6 @@ private:
 	// Directive parsers
 	bool parseServerDirective(VirtualHost &virtualHost, Route &defaults);
 	bool parseLocationDirective(Route &route);
-	bool parseSharedDirective(Route &route);
 
 	// Block parsers
 	void parseLocationBlock(VirtualHost &virtualHost, Route &defaults);
