@@ -5,7 +5,7 @@
 #include <string>					// string
 #include <utility>					// make_pair, pair
 
-VirtualHost::VirtualHost() : name_("default"), binds_(1, std::make_pair("127.0.0.1", "80")), routes_(1, Route())
+VirtualHost::VirtualHost() : binds_(1, std::make_pair(std::string("127.0.0.1"), std::string("80"))), name_("default"), routes_(1, Route())
 {
 	errorPages_.insert(std::make_pair(HttpStatus::BadRequest,						HtmlDir "/400.html"));
 	errorPages_.insert(std::make_pair(HttpStatus::Forbidden,						HtmlDir "/403.html"));
@@ -20,6 +20,8 @@ VirtualHost::VirtualHost() : name_("default"), binds_(1, std::make_pair("127.0.0
 	errorPages_.insert(std::make_pair(HttpStatus::GatewayTimeout,					HtmlDir "/504.html"));
 	errorPages_.insert(std::make_pair(HttpStatus::HTTPVersionNotSupported,		HtmlDir "/505.html"));
 }
+
+VirtualHost::VirtualHost(const std::string &name) : name_(name) { }
 
 void VirtualHost::addBind(const std::string &address, const std::string &port)
 {

@@ -19,6 +19,7 @@ class VirtualHost
 public:
 
 	VirtualHost();
+	VirtualHost(const std::string &name);
 
 	void addBind(const std::string &address, const std::string &port);
 	void addErrorPage(const std::string &code, const std::string &page);

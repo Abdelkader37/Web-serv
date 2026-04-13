@@ -3,21 +3,26 @@
 #include "utils/StringUtils.hpp"	// isAllDigits
 #include <stdexcept>				// runtime_error
 
-Route::Route()							: path_("/"), redirect_(false), root_(HtmlDir), indexFiles_(1, "welcome.html"), methods_(1, "GET"), autoindex_(false) {};
+Route::Route()							: maxBodySize_(0), path_("/"), methods_(1, "GET"), root_(HtmlDir), redirect_(false), autoindex_(false), indexFiles_(1, "welcome.html") { }
 
-Route::Route(const std::string &path) : path_(path), redirect_(false), autoindex_(false), maxBodySize_(0) {}
+Route::Route(const std::string &path) : maxBodySize_(0), path_(path), redirect_(false), autoindex_(false) {}
 
 Route &Route::operator=(const Route &other)
 {
-	if (root_.empty())			root_		= other.root_;
-	if (indexFiles_.empty())	indexFiles_	= other.indexFiles_;
-	if (methods_.empty())		methods_	= other.methods_;
-	if (!autoindex_)			autoindex_	= other.autoindex_;
-	if (!maxBodySize_)			maxBodySize_= other.maxBodySize_;
+	if (root_.empty())			root_			= other.root_;
+	if (indexFiles_.empty())	indexFiles_		= other.indexFiles_;
+	if (methods_.empty())		methods_		= other.methods_;
+	if (!autoindex_)			autoindex_		= other.autoindex_;
+	if (!maxBodySize_)			maxBodySize_	= other.maxBodySize_;
+	if (upload_.empty())		upload_			= other.upload_;
+	if (cgis_.empty())			cgis_			= other.cgis_;
+
+	for (std::map<HttpStatus::Code, std::string>::const_iterator it = other.errorPages_.begin(); it != other.errorPages_.end(); ++it)
+		errorPages_.insert(*it); // won't override
+
 	return *this;
 }
 
-// move validation logic from Config.cpp to here 
 void Route::setMaxBodySize(const std::string &maxBodySize)
 {
 	if (!StringUtils::isAllDigits(maxBodySize))
@@ -46,11 +51,9 @@ void Route::setRedirect(const std::string &statusCode, const std::string &page)
 {
 	if (!HttpStatus::isRedirectCode(statusCode))
 		throw std::runtime_error("Invalid redirect code");
-	if (page.empty() || (page.compare(0, 7, "http://") != 0 && page.compare(0, 8, "https://") != 0 && page.at(0) != '/'))
-		throw std::runtime_error("Invalid redirect URL");
-	redirect_ = true;
-	redirectCode_ = HttpStatus::toCode(statusCode);
-	redirectPage_ = page;
+	redirect_		= true;
+	redirectCode_	= HttpStatus::toCode(statusCode);
+	redirectPage_	= page;
 }
 
 void Route::setAutoIndex(const std::string &autoindex)
@@ -63,6 +66,7 @@ void Route::setAutoIndex(const std::string &autoindex)
 void	Route::addIndexFile(const std::string &indexFile)						{ indexFiles_.push_back(indexFile); }
 void	Route::addCgi(const std::string &extension, const std::string &path)	{ cgis_[extension] = path; }
 void	Route::setUpload(const std::string &upload)								{ upload_ = upload; }
+void	Route::clearMethods() { methods_.clear(); }
 
 const std::string								&Route::path()			const { return path_; }
 size_t											Route::maxBodySize()	const { return maxBodySize_; }

@@ -46,6 +46,8 @@ public:
 	void	addErrorPage(const std::string &code, const std::string &page);
 	void	setUpload(const std::string &upload);
 
+	void	clearMethods();
+
 private:
 
 	size_t									maxBodySize_;
